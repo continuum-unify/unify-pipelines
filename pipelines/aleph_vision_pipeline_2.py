@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class Pipeline:
     class Valves(BaseModel):
-        ANTHROPIC_API_KEY: str = "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"
+        ANTHROPIC_API_KEY: str = ""
         MAX_IMAGE_SIZE: int = 100 * 1024 * 1024  # 100MB limit
         MAX_IMAGES_PER_REQUEST: int = 20  # Anthropic's limit for claude.ai
         MAX_IMAGE_DIMENSION: int = 8000  # Maximum pixel dimension
