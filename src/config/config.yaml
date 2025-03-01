@@ -1,0 +1,210 @@
+
+# Storage configuration
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+
+# Endpoint configuration
+endpoint:
+  url: "http://192.168.13.50:30286/v1/chat/completions"
+
+# Model configuration
+model:
+  name: "meta/llama3-8b-instruct"
+
+# Generation parameters
+generation:
+  max_tokens: 2000
+  temperature: 0.3
+  top_p: 1
+  n: 1
+  stream: false
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  logit_bias: {}
+  stop: null
+  repetition_penalty: 1.0
+  seed: null
+  watermark: false
+  beam_width: 1
+  length_penalty: 1.0
+  prompt_template: null
+  prompt_parameters: {}
+  stream_options:
+    chunk_tokens: 20
+    chunk_timeout: 15
+
+# Error handling configuration
+error_handling:
+  max_retries: 3
+  backoff_factor: 0.5
+  retry_status_codes:
+    - 500
+    - 502
+    - 504
+
+# Concurrency settings
+concurrency:
+  max_workers: 10
+
+# API rate limiting
+api_rate_limit:
+  requests_per_minute: 60
+  pause_on_limit: 60
+
+embedding:
+  endpoint: "http://192.168.13.50:30000/v1/embeddings"
+  default_model: "nvidia/nv-embedqa-mistral-7b-v2"
+  input_types:
+    - "query"
+    - "passage"
+  encoding_format: "float"
+  truncate: "END"  # Changed from TRUNCATE to START
+  max_batch_size: 8000
+  timeout: 30
+  dimension: 4096
+
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  metrics_interval: 60
+
+# Caching configuration
+caching:
+  enabled: true
+  max_size: 1000
+  ttl: 3600
+
+
+collections:
+  documents:
+    name: arxiv_documents
+    description: "Collection of ARXIV embeddings optimized for GPU search with CAGRA indexing"
+    enable_dynamic_field: true
+
+    # Collection-level index configuration
+    index_config:
+      build_config:
+        gpu: true
+        gpu_id: 0
+        build_batch_size: 2000  # Increased for better GPU utilization
+
+    search_config:
+      gpu: true
+      topk: 100
+      params:
+        search_width: 128    # Increased for better recall
+        ef_search: 100       # Added for search optimization
+
+    fields:
+      - name: doc_id
+        dtype: INT64
+        is_primary: true
+        auto_id: true
+        description: "Unique identifier for the document chunk"
+
+      - name: timestamp
+        dtype: INT64
+        description: "Processing timestamp"
+        index:
+          index_type: STL_SORT   # Keep for time-based queries
+          params: {}
+
+      - name: source_file
+        dtype: VARCHAR
+        max_length: 512
+        description: "Source file name"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: arxiv_url_link
+        dtype: VARCHAR
+        max_length: 2048
+        description: "Direct link to the ARXIV document"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: year
+        dtype: INT32
+        description: "Publication year of the document"
+        index:
+          index_type: STL_SORT
+          params: {}
+
+      - name: category
+        dtype: VARCHAR
+        max_length: 128
+        description: "Document category or subject area"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: summary
+        dtype: VARCHAR
+        max_length: 8192
+        description: "Text summary"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: key_points
+        dtype: VARCHAR
+        max_length: 4096
+        description: "Key points extracted from text"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: relationships
+        dtype: VARCHAR
+        max_length: 4096
+        description: "Relationships identified in text for search compatibility"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: technical_terms
+        dtype: VARCHAR
+        max_length: 4096
+        description: "Technical terms extracted from text"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: abstract
+        dtype: VARCHAR
+        max_length: 8192
+        description: "Abstract of the ARXIV document"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: text
+        dtype: VARCHAR
+        max_length: 65535
+        description: "Original text content"
+        index:
+          index_type: INVERTED
+          params: {}
+
+      - name: embedding
+        dtype: FLOAT_VECTOR
+        dim: 4096
+        description: "NeMo embedding vector"
+        index:
+          index_type: GPU_CAGRA
+          metric_type: L2
+          params:
+            search_width: 128
+            construction_width: 128
+            max_degree: 64
+            cache_dataset_on_device: "true"
+          build_params:
+            gpu_id: 0
+            build_batch_size: 2000
+            build_algo: "IVF_PQ"

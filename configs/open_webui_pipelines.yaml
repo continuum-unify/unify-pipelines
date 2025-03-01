@@ -1,0 +1,45 @@
+# Original WebUI config remains the same until pipelines section
+
+# Pipelines configuration
+pipelines:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/open-webui/pipelines
+    tag: main
+    pullPolicy: Always
+  
+  # Environment variables for pipeline configuration
+  extraEnvVars:
+    - name: PIPELINES_URLS
+      value: "https://raw.githubusercontent.com/Continuum-Labs-HQ/unify-pipelines/main/pipelines/text_pipeline.py"  # Updated path
+  
+  # Resource configuration for the pipeline
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  
+  # Persistence configuration
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: "milvus-raid1-storage-class"
+    
+  # Volume configuration
+  volumeMounts:
+    - name: pipelines-data
+      mountPath: /app/data
+  volumes:
+    - name: pipelines-data
+      persistentVolumeClaim:
+        claimName: open-webui-pipelines
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 9099
+    containerPort: 9099

@@ -1,0 +1,90 @@
+{
+    "customer_information": {
+      "customer_id": "C123456",
+      "full_name": "Michael Johnson",
+      "age": 42,
+      "contact_information": {
+        "email": "michael.johnson@example.com",
+        "phone": "555-867-5309",
+        "address": {
+          "street": "123 Pine Dr",
+          "city": "Springfield",
+          "state": "IL",
+          "zip_code": "62704"
+        }
+      },
+      "driver_information": {
+        "license_number": "DL987654D",
+        "license_status": "Valid",
+        "license_expiry": "2027-05-15",
+        "days_to_expiry": 795,
+        "years_driving": 24
+      },
+      "personal_information": {
+        "date_of_birth": "1982-08-24",
+        "gender": "Male",
+        "marital_status": "Married",
+        "occupation": "Software Engineer"
+      }
+    },
+    "policy_summary": {
+      "total_policies": 1,
+      "active_policies": 1,
+      "total_premium": "$1,450.00",
+      "policies": [
+        {
+          "policy_id": "POL-573829",
+          "policy_type": "Comprehensive",
+          "status": "Active",
+          "coverage_period": "2024-08-15 to 2025-08-15",
+          "days_to_expiry": 165,
+          "premium": "$1,450.00",
+          "payment_frequency": "Monthly",
+          "payment_status": "Current",
+          "coverage_limits": {
+            "bodily_injury": "250000/500000",
+            "property_damage": "100000",
+            "collision": "$500 deductible",
+            "comprehensive": "$500 deductible"
+          },
+          "discounts": ["Multi-policy", "Good driver", "Anti-theft device"]
+        }
+      ]
+    },
+    "vehicle_summary": {
+      "total_vehicles": 1,
+      "vehicles": [
+        {
+          "vehicle_id": "V123456",
+          "make_model": "Honda Accord (2022)",
+          "vin": "1HGCM82633A123456",
+          "type": "Sedan",
+          "license_plate": "ABC-1234",
+          "mileage": 25000,
+          "fuel_type": "Gasoline",
+          "safety_features": ["Airbags", "Anti-lock Brakes", "Backup Camera", "Lane Departure Warning"]
+        }
+      ]
+    },
+    "claims_summary": {
+      "total_claims": 1,
+      "recent_claims": 1,
+      "claims": [
+        {
+          "claim_id": "CL-987654",
+          "date": "2024-09-18",
+          "status": "Paid",
+          "amount": "$2,200.00",
+          "description": "Front bumper damage from collision in parking lot",
+          "fault": "Not-At-Fault",
+          "police_report": "N/A",
+          "is_recent": true
+        }
+      ]
+    },
+    "risk_assessment": {
+      "risk_score": 85,
+      "risk_category": "Low Risk",
+      "fraud_risk_indicator": 0.12
+    }
+  }

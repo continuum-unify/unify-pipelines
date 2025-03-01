@@ -1,0 +1,176 @@
+2024-11-17 20:05:46 - INFO - Schema defined successfully
+2024-11-17 20:05:46 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:05:46 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:05:46 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:05:46 - INFO - Global embedding client initialized successfully
+2024-11-17 20:06:31 - INFO - Schema defined successfully
+2024-11-17 20:06:31 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:06:31 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:06:31 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:06:31 - INFO - Global embedding client initialized successfully
+2024-11-17 20:10:14 - INFO - Schema defined successfully
+2024-11-17 20:10:14 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:10:14 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:10:14 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:10:14 - INFO - Global embedding client initialized successfully
+2024-11-17 20:11:30 - INFO - Schema defined successfully
+2024-11-17 20:11:30 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:11:31 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:11:31 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:11:31 - INFO - Global embedding client initialized successfully
+2024-11-17 20:11:31 - INFO - RAG Engine initialized successfully
+2024-11-17 20:11:31 - INFO - Successfully created RAG engine
+2024-11-17 20:12:15 - INFO - Getting embedding for text: black hole...
+2024-11-17 20:12:15 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:12:15 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 20:12:15 - INFO - Database 'arxiv' already exists
+2024-11-17 20:12:15 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:12:15 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:12:36 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:12:36 - INFO - Retrieved 5 documents for query: black hole
+2024-11-17 20:12:37 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:12:37 - INFO - Disconnected from Milvus
+2024-11-17 20:12:37 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 20:21:30 - INFO - Schema defined successfully
+2024-11-17 20:21:30 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:21:30 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:21:30 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:21:30 - INFO - Global embedding client initialized successfully
+2024-11-17 20:21:30 - INFO - RAG Engine initialized successfully
+2024-11-17 20:21:30 - INFO - Successfully created RAG engine
+2024-11-17 20:21:35 - INFO - Getting embedding for text: black hole...
+2024-11-17 20:21:37 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:21:37 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 20:21:37 - INFO - Database 'arxiv' already exists
+2024-11-17 20:21:37 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:21:37 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:21:58 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:21:58 - INFO - Retrieved 5 documents for query: black hole
+2024-11-17 20:21:59 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:21:59 - INFO - Disconnected from Milvus
+2024-11-17 20:21:59 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 20:23:25 - INFO - Schema defined successfully
+2024-11-17 20:23:25 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:23:25 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:23:25 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:23:25 - INFO - Global embedding client initialized successfully
+2024-11-17 20:23:25 - INFO - RAG Engine initialized successfully
+2024-11-17 20:23:25 - INFO - Successfully created RAG engine
+2024-11-17 20:23:30 - INFO - Getting embedding for text: black hole...
+2024-11-17 20:23:30 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:23:30 - INFO - Available databases: ['tourist_attractions', 'arxiv', 'default']
+2024-11-17 20:23:30 - INFO - Database 'arxiv' already exists
+2024-11-17 20:23:30 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:23:30 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:23:52 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:23:52 - INFO - Retrieved 5 documents for query: black hole
+2024-11-17 20:23:53 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:23:53 - INFO - Disconnected from Milvus
+2024-11-17 20:23:53 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 20:30:27 - INFO - Schema defined successfully
+2024-11-17 20:30:27 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:30:27 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:30:27 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:30:27 - INFO - Global embedding client initialized successfully
+2024-11-17 20:31:56 - INFO - Schema defined successfully
+2024-11-17 20:31:56 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:31:56 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:31:56 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:31:56 - INFO - Global embedding client initialized successfully
+2024-11-17 20:31:56 - INFO - RAG Engine initialized successfully
+2024-11-17 20:31:56 - INFO - Successfully created RAG engine
+2024-11-17 20:33:35 - INFO - Getting embedding for text: black hole...
+2024-11-17 20:33:35 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:33:35 - INFO - Available databases: ['arxiv', 'default', 'tourist_attractions']
+2024-11-17 20:33:35 - INFO - Database 'arxiv' already exists
+2024-11-17 20:33:35 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:33:35 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:33:56 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:33:56 - INFO - Retrieved 5 documents for query: black hole
+2024-11-17 20:33:58 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:33:58 - INFO - Disconnected from Milvus
+2024-11-17 20:33:58 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 20:51:46 - INFO - Getting embedding for text: neutron electric dipole moment (nEDM)...
+2024-11-17 20:51:47 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:51:47 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 20:51:47 - INFO - Database 'arxiv' already exists
+2024-11-17 20:51:47 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:51:47 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:51:47 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:51:47 - INFO - Retrieved 5 documents for query:  neutron electric dipole moment (nEDM) 
+2024-11-17 20:51:48 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:51:48 - INFO - Disconnected from Milvus
+2024-11-17 20:51:48 - WARNING - Truncating context after 2 sources due to length limit
+2024-11-17 20:53:09 - INFO - Getting embedding for text: Detection of topological islands in power system...
+2024-11-17 20:53:09 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:53:09 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 20:53:09 - INFO - Database 'arxiv' already exists
+2024-11-17 20:53:09 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:53:09 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:53:30 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:53:30 - INFO - Retrieved 5 documents for query: Detection of topological islands in power system
+2024-11-17 20:53:31 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:53:31 - INFO - Disconnected from Milvus
+2024-11-17 20:53:31 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 20:56:04 - INFO - Schema defined successfully
+2024-11-17 20:56:04 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:56:04 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:56:04 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:56:04 - INFO - Global embedding client initialized successfully
+2024-11-17 20:57:32 - INFO - Schema defined successfully
+2024-11-17 20:57:32 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:57:32 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:57:32 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:57:32 - INFO - Global embedding client initialized successfully
+2024-11-17 20:57:48 - INFO - Schema defined successfully
+2024-11-17 20:57:48 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:57:48 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:57:48 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:57:48 - INFO - Global embedding client initialized successfully
+2024-11-17 20:57:48 - INFO - RAG Engine initialized successfully
+2024-11-17 20:57:48 - INFO - Successfully created RAG engine
+2024-11-17 20:58:05 - INFO - Schema defined successfully
+2024-11-17 20:58:05 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:58:05 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:58:05 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:58:05 - INFO - Global embedding client initialized successfully
+2024-11-17 20:59:25 - INFO - Schema defined successfully
+2024-11-17 20:59:25 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-17 20:59:25 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-17 20:59:25 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-17 20:59:25 - INFO - Global embedding client initialized successfully
+2024-11-17 20:59:25 - INFO - RAG Engine initialized successfully
+2024-11-17 20:59:25 - INFO - Successfully created RAG engine
+2024-11-17 20:59:32 - INFO - Getting embedding for text: black hole...
+2024-11-17 20:59:32 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 20:59:32 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 20:59:32 - INFO - Database 'arxiv' already exists
+2024-11-17 20:59:32 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 20:59:32 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 20:59:53 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 20:59:53 - INFO - Retrieved 5 documents for query: black hole
+2024-11-17 20:59:54 - INFO - Collection arxiv_documents released from memory
+2024-11-17 20:59:54 - INFO - Disconnected from Milvus
+2024-11-17 20:59:54 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 21:06:01 - INFO - Getting embedding for text: Calculation of the RKKY interaction using the Green's functions...
+2024-11-17 21:06:01 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 21:06:01 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 21:06:01 - INFO - Database 'arxiv' already exists
+2024-11-17 21:06:01 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 21:06:01 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 21:06:23 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 21:06:23 - INFO - Retrieved 5 documents for query:  Calculation of the RKKY interaction using the Green's functions
+2024-11-17 21:06:24 - INFO - Collection arxiv_documents released from memory
+2024-11-17 21:06:24 - INFO - Disconnected from Milvus
+2024-11-17 21:06:24 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-17 21:25:51 - INFO - Getting embedding for text: quantum computing...
+2024-11-17 21:25:52 - INFO - Successfully generated embedding of dimension 4096
+2024-11-17 21:25:52 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-17 21:25:52 - INFO - Database 'arxiv' already exists
+2024-11-17 21:25:52 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-17 21:25:52 - INFO - Successfully connected to Milvus arxiv database
+2024-11-17 21:26:17 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-17 21:26:18 - INFO - Retrieved 5 documents for query: quantum computing
+2024-11-17 21:26:19 - INFO - Collection arxiv_documents released from memory
+2024-11-17 21:26:19 - INFO - Disconnected from Milvus
+2024-11-17 21:26:19 - WARNING - Truncating context after 2 sources due to length limit

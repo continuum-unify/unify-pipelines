@@ -1,0 +1,388 @@
+2024-11-21 20:11:55 - INFO - Schema defined successfully
+2024-11-21 20:11:55 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-21 20:11:55 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-21 20:11:55 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-21 20:11:55 - INFO - Global embedding client initialized successfully
+2024-11-21 20:11:55 - INFO - RAG Engine initialized successfully
+2024-11-21 20:11:55 - INFO - Successfully created RAG engine
+2024-11-21 20:11:59 - INFO - Successfully generated embedding of dimension 4096
+2024-11-21 20:11:59 - INFO - Available databases: ['arxiv', 'default', 'tourist_attractions']
+2024-11-21 20:11:59 - INFO - Database 'arxiv' already exists
+2024-11-21 20:11:59 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-21 20:11:59 - INFO - Successfully connected to Milvus arxiv database
+2024-11-21 20:13:29 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-21 20:13:29 - INFO - Retrieved 5 documents for query: black hole
+2024-11-21 20:13:33 - INFO - Collection arxiv_documents released from memory
+2024-11-21 20:13:33 - INFO - Disconnected from Milvus
+2024-11-21 20:13:33 - WARNING - Truncating context after 3 sources due to length limit
+2024-11-21 20:15:55 - INFO - Successfully generated embedding of dimension 4096
+2024-11-21 20:15:55 - INFO - Available databases: ['default', 'tourist_attractions', 'arxiv']
+2024-11-21 20:15:55 - INFO - Database 'arxiv' already exists
+2024-11-21 20:15:55 - INFO - Connecting to Milvus at 10.106.175.99:19530 (Database: arxiv)
+2024-11-21 20:15:55 - INFO - Successfully connected to Milvus arxiv database
+2024-11-21 20:17:16 - INFO - Collection 'arxiv_documents' loaded for querying
+2024-11-21 20:17:17 - INFO - Retrieved 5 documents for query: What is Poynting flux energy?\
+2024-11-21 20:17:20 - INFO - Collection arxiv_documents released from memory
+2024-11-21 20:17:20 - INFO - Disconnected from Milvus
+2024-11-21 20:17:20 - WARNING - Truncating context after 2 sources due to length limit
+2024-11-21 20:33:29 - INFO - Schema defined successfully
+2024-11-21 20:33:29 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-21 20:33:29 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-21 20:33:29 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-21 20:33:29 - INFO - Global embedding client initialized successfully
+2024-11-21 20:33:29 - INFO - Starting Milvus Inspection
+2024-11-21 20:33:29 - INFO - Successfully connected to Milvus
+2024-11-21 20:33:29 - INFO - 
+=== Databases ===
+2024-11-21 20:33:29 - INFO -   • default
+2024-11-21 20:33:29 - INFO - 
+  Collections in 'default':
+2024-11-21 20:33:29 - INFO -     ◦ arxiv_documents
+2024-11-21 20:33:29 - INFO - 
+    Collection 'arxiv_documents' Schema:
+2024-11-21 20:33:29 - INFO -     Fields:
+2024-11-21 20:33:29 - INFO -       - doc_id
+2024-11-21 20:33:29 - INFO -         Type: 5
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Unique identifier for the document chunk
+2024-11-21 20:33:29 - INFO -       - timestamp
+2024-11-21 20:33:29 - INFO -         Type: 5
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Processing timestamp
+2024-11-21 20:33:29 - INFO -       - source_file
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 512
+2024-11-21 20:33:29 - INFO -         Description: Source file name
+2024-11-21 20:33:29 - INFO -       - arxiv_url_link
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 2048
+2024-11-21 20:33:29 - INFO -         Description: Direct link to the ARXIV document
+2024-11-21 20:33:29 - INFO -       - year
+2024-11-21 20:33:29 - INFO -         Type: 4
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Publication year of the document
+2024-11-21 20:33:29 - INFO -       - category
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 128
+2024-11-21 20:33:29 - INFO -         Description: Document category or subject area
+2024-11-21 20:33:29 - INFO -       - summary
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 8192
+2024-11-21 20:33:29 - INFO -         Description: Text summary
+2024-11-21 20:33:29 - INFO -       - key_points
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Key points extracted from text
+2024-11-21 20:33:29 - INFO -       - relationships
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Relationships identified in text for search compatibility
+2024-11-21 20:33:29 - INFO -       - technical_terms
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Technical terms extracted from text
+2024-11-21 20:33:29 - INFO -       - abstract
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 8192
+2024-11-21 20:33:29 - INFO -         Description: Abstract of the ARXIV document
+2024-11-21 20:33:29 - INFO -       - text
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 65535
+2024-11-21 20:33:29 - INFO -         Description: Original text content
+2024-11-21 20:33:29 - INFO -       - embedding
+2024-11-21 20:33:29 - INFO -         Type: 101
+2024-11-21 20:33:29 - INFO -         Dimension: 4096
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: NeMo embedding vector
+2024-11-21 20:33:29 - INFO - 
+    Statistics:
+2024-11-21 20:33:29 - INFO -       Row count: 0
+2024-11-21 20:33:29 - INFO - 
+    Indexes:
+2024-11-21 20:33:29 - INFO -       - Field: timestamp
+2024-11-21 20:33:29 - INFO -         Type: STL_SORT
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: arxiv_url_link
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: year
+2024-11-21 20:33:29 - INFO -         Type: STL_SORT
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: relationships
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: technical_terms
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: text
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: source_file
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: category
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: summary
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: key_points
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: abstract
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: embedding
+2024-11-21 20:33:29 - INFO -         Type: GPU_CAGRA
+2024-11-21 20:33:29 - INFO -         Params: {'search_width': 128, 'construction_width': 128, 'max_degree': 64, 'cache_dataset_on_device': 'true'}
+2024-11-21 20:33:29 - INFO - 
+==================================================
+2024-11-21 20:33:29 - INFO -   • tourist_attractions
+2024-11-21 20:33:29 - INFO - 
+  Collections in 'tourist_attractions':
+2024-11-21 20:33:29 - INFO -     ◦ arxiv_documents
+2024-11-21 20:33:29 - INFO - 
+    Collection 'arxiv_documents' Schema:
+2024-11-21 20:33:29 - INFO -     Fields:
+2024-11-21 20:33:29 - INFO -       - doc_id
+2024-11-21 20:33:29 - INFO -         Type: 5
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Unique identifier for the document chunk
+2024-11-21 20:33:29 - INFO -       - timestamp
+2024-11-21 20:33:29 - INFO -         Type: 5
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Processing timestamp
+2024-11-21 20:33:29 - INFO -       - source_file
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 512
+2024-11-21 20:33:29 - INFO -         Description: Source file name
+2024-11-21 20:33:29 - INFO -       - arxiv_url_link
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 2048
+2024-11-21 20:33:29 - INFO -         Description: Direct link to the ARXIV document
+2024-11-21 20:33:29 - INFO -       - year
+2024-11-21 20:33:29 - INFO -         Type: 4
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Publication year of the document
+2024-11-21 20:33:29 - INFO -       - category
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 128
+2024-11-21 20:33:29 - INFO -         Description: Document category or subject area
+2024-11-21 20:33:29 - INFO -       - summary
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 8192
+2024-11-21 20:33:29 - INFO -         Description: Text summary
+2024-11-21 20:33:29 - INFO -       - key_points
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Key points extracted from text
+2024-11-21 20:33:29 - INFO -       - relationships
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Relationships identified in text for search compatibility
+2024-11-21 20:33:29 - INFO -       - technical_terms
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Technical terms extracted from text
+2024-11-21 20:33:29 - INFO -       - abstract
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 8192
+2024-11-21 20:33:29 - INFO -         Description: Abstract of the ARXIV document
+2024-11-21 20:33:29 - INFO -       - text
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 65535
+2024-11-21 20:33:29 - INFO -         Description: Original text content
+2024-11-21 20:33:29 - INFO -       - embedding
+2024-11-21 20:33:29 - INFO -         Type: 101
+2024-11-21 20:33:29 - INFO -         Dimension: 4096
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: NeMo embedding vector
+2024-11-21 20:33:29 - INFO - 
+    Statistics:
+2024-11-21 20:33:29 - INFO -       Row count: 0
+2024-11-21 20:33:29 - INFO - 
+    Indexes:
+2024-11-21 20:33:29 - INFO -       - Field: summary
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: key_points
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: abstract
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: embedding
+2024-11-21 20:33:29 - INFO -         Type: GPU_CAGRA
+2024-11-21 20:33:29 - INFO -         Params: {'search_width': 128, 'construction_width': 128, 'max_degree': 64, 'cache_dataset_on_device': 'true'}
+2024-11-21 20:33:29 - INFO -       - Field: source_file
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: category
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: year
+2024-11-21 20:33:29 - INFO -         Type: STL_SORT
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: relationships
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: technical_terms
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: text
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: timestamp
+2024-11-21 20:33:29 - INFO -         Type: STL_SORT
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: arxiv_url_link
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO - 
+==================================================
+2024-11-21 20:33:29 - INFO -   • arxiv
+2024-11-21 20:33:29 - INFO - 
+  Collections in 'arxiv':
+2024-11-21 20:33:29 - INFO -     ◦ arxiv_documents
+2024-11-21 20:33:29 - INFO - 
+    Collection 'arxiv_documents' Schema:
+2024-11-21 20:33:29 - INFO -     Fields:
+2024-11-21 20:33:29 - INFO -       - doc_id
+2024-11-21 20:33:29 - INFO -         Type: 5
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Unique identifier for the document chunk
+2024-11-21 20:33:29 - INFO -       - timestamp
+2024-11-21 20:33:29 - INFO -         Type: 5
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Processing timestamp
+2024-11-21 20:33:29 - INFO -       - source_file
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 512
+2024-11-21 20:33:29 - INFO -         Description: Source file name
+2024-11-21 20:33:29 - INFO -       - arxiv_url_link
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 2048
+2024-11-21 20:33:29 - INFO -         Description: Direct link to the ARXIV document
+2024-11-21 20:33:29 - INFO -       - year
+2024-11-21 20:33:29 - INFO -         Type: 4
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: Publication year of the document
+2024-11-21 20:33:29 - INFO -       - category
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 128
+2024-11-21 20:33:29 - INFO -         Description: Document category or subject area
+2024-11-21 20:33:29 - INFO -       - summary
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 8192
+2024-11-21 20:33:29 - INFO -         Description: Text summary
+2024-11-21 20:33:29 - INFO -       - key_points
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Key points extracted from text
+2024-11-21 20:33:29 - INFO -       - relationships
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Relationships identified in text for search compatibility
+2024-11-21 20:33:29 - INFO -       - technical_terms
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 4096
+2024-11-21 20:33:29 - INFO -         Description: Technical terms extracted from text
+2024-11-21 20:33:29 - INFO -       - abstract
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 8192
+2024-11-21 20:33:29 - INFO -         Description: Abstract of the ARXIV document
+2024-11-21 20:33:29 - INFO -       - text
+2024-11-21 20:33:29 - INFO -         Type: 21
+2024-11-21 20:33:29 - INFO -         Dimension: None
+2024-11-21 20:33:29 - INFO -         Max Length: 65535
+2024-11-21 20:33:29 - INFO -         Description: Original text content
+2024-11-21 20:33:29 - INFO -       - embedding
+2024-11-21 20:33:29 - INFO -         Type: 101
+2024-11-21 20:33:29 - INFO -         Dimension: 4096
+2024-11-21 20:33:29 - INFO -         Max Length: None
+2024-11-21 20:33:29 - INFO -         Description: NeMo embedding vector
+2024-11-21 20:33:29 - INFO - 
+    Statistics:
+2024-11-21 20:33:29 - INFO -       Row count: 0
+2024-11-21 20:33:29 - INFO - 
+    Indexes:
+2024-11-21 20:33:29 - INFO -       - Field: timestamp
+2024-11-21 20:33:29 - INFO -         Type: STL_SORT
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: arxiv_url_link
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: year
+2024-11-21 20:33:29 - INFO -         Type: STL_SORT
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: relationships
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: technical_terms
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: text
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: source_file
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: category
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: summary
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: key_points
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: abstract
+2024-11-21 20:33:29 - INFO -         Type: INVERTED
+2024-11-21 20:33:29 - INFO -         Params: {}
+2024-11-21 20:33:29 - INFO -       - Field: embedding
+2024-11-21 20:33:29 - INFO -         Type: GPU_CAGRA
+2024-11-21 20:33:29 - INFO -         Params: {'search_width': 128, 'construction_width': 128, 'max_degree': 64, 'cache_dataset_on_device': 'true'}
+2024-11-21 20:33:29 - INFO - 
+==================================================
+2024-11-21 20:33:29 - INFO - 
+Inspection completed
+2024-11-21 20:33:45 - INFO - Schema defined successfully
+2024-11-21 20:33:45 - INFO - Initialized MilvusClient with collection name: arxiv_documents for database: arxiv
+2024-11-21 20:33:45 - INFO - EmbeddingClient initialized with endpoint: http://192.168.13.50:30000/v1/embeddings
+2024-11-21 20:33:45 - INFO - Using model: nvidia/nv-embedqa-mistral-7b-v2
+2024-11-21 20:33:45 - INFO - Global embedding client initialized successfully
