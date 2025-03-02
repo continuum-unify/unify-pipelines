@@ -1,136 +1,235 @@
 """
 title: Aleph Manifold Pipeline
 author: Your Name
-date: 2024-01-20
-version: 1.3
+date: 2024-03-02
+version: 1.5
 license: MIT
-description: A pipeline for text generation and image analysis using the Anthropic API.
+description: Streamlined pipeline for text and image processing using Anthropic's Claude API.
 requirements: requests, sseclient-py
 environment_variables: ANTHROPIC_API_KEY
 """
 
 import os
-import requests
 import json
-from typing import List, Dict, Any
+import base64
+import requests
+import logging
+from typing import List, Dict, Any, Generator
 from pydantic import BaseModel
 import sseclient
-import logging
+from io import BytesIO
 
-# Set up logging with detailed formatting
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Pipeline:
     class Valves(BaseModel):
-        ANTHROPIC_API_KEY: str = "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"
-        MAX_IMAGE_SIZE: int = 100 * 1024 * 1024  # 100MB limit
-        MAX_IMAGES_PER_REQUEST: int = 20  # Anthropic's limit for claude.ai
-        MAX_IMAGE_DIMENSION: int = 8000  # Maximum pixel dimension
-        MIN_IMAGE_DIMENSION: int = 200   # Minimum recommended dimension
+        ANTHROPIC_API_KEY: str = ""
+        MAX_IMAGE_SIZE: int = 20 * 1024 * 1024  # 20MB limit
 
     def __init__(self):
         """Initialize the Aleph pipeline."""
-        self.type = "aleph_vision"
-        self.id = "aleph_vision"
-        self.name = "aleph"
+        self.type = "filter"
+        self.name = "aleph_manifold"
         
         # Define model mapping
         self.model_mapping = {
             "1": "claude-3-7-sonnet-20250219",
             "2": "claude-3-5-haiku-20241022",
             "3": "claude-3-5-sonnet-20241022",
-            "4": "claude-3-5-sonnet-20240620",
-            "5": "claude-3-opus-20240229",
-            "6": "claude-3-sonnet-20240229",
-            "7": "claude-3-haiku-20240307"
+            "4": "claude-3-opus-20240229",
+            "5": "claude-3-sonnet-20240229"
         }
         
-        # Initialize valves with API key from environment
+        # Initialize valves
         self.valves = self.Valves(
-            **{
-                "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", ""),
-                "MAX_IMAGE_SIZE": int(os.getenv("MAX_IMAGE_SIZE", 100 * 1024 * 1024)),
-                "MAX_IMAGES_PER_REQUEST": int(os.getenv("MAX_IMAGES_PER_REQUEST", 20)),
-                "MAX_IMAGE_DIMENSION": int(os.getenv("MAX_IMAGE_DIMENSION", 8000)),
-                "MIN_IMAGE_DIMENSION": int(os.getenv("MIN_IMAGE_DIMENSION", 200))
-            }
+            ANTHROPIC_API_KEY=os.getenv("ANTHROPIC_API_KEY", "")
         )
-        self.url = 'https://api.anthropic.com/v1/messages'
-        self.update_headers()
+        
+        self.url = "https://api.anthropic.com/v1/messages"
+        self.headers = {
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+            "x-api-key": self.valves.ANTHROPIC_API_KEY
+        }
+        
         logger.info("Aleph pipeline initialized")
 
-    def update_headers(self):
-        """Update request headers with current API key."""
-        self.headers = {
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-            'x-api-key': self.valves.ANTHROPIC_API_KEY.strip()
-        }
-        logger.debug("Headers updated")
-
-    def validate_api_key(self) -> bool:
-        """Validate the Anthropic API key."""
+    async def on_startup(self):
+        """Startup tasks."""
         if not self.valves.ANTHROPIC_API_KEY:
-            logger.error("No Anthropic API key provided")
-            return False
+            logger.warning("No Anthropic API key provided")
+        logger.info("Aleph pipeline started")
+
+    async def on_shutdown(self):
+        """Cleanup tasks."""
+        logger.info("Aleph pipeline shut down")
+
+    async def inlet(self, body: Dict[str, Any], user: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Process the request before sending to the LLM."""
+        try:
+            # Process any images in messages
+            if "messages" in body:
+                for i, msg in enumerate(body["messages"]):
+                    if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                        # Check for attachments
+                        attachments = body.get("attachments", [])
+                        if attachments:
+                            body["messages"][i] = self._process_message_with_images(msg, attachments)
             
-        if not self.valves.ANTHROPIC_API_KEY.startswith("sk-ant"):
-            logger.error("Invalid Anthropic API key format")
-            return False
+            # Map model ID if needed
+            if "model" in body and body["model"] in self.model_mapping:
+                body["model"] = self.model_mapping[body["model"]]
+            
+            return body
+        except Exception as e:
+            logger.error(f"Inlet error: {str(e)}")
+            return body
+
+    def _process_message_with_images(self, message: Dict[str, Any], attachments: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Add images to the message content."""
+        if not attachments:
+            return message
+            
+        new_content = []
         
-        try:
-            response = requests.get(
-                "https://api.anthropic.com/v1/models",
-                headers=self.headers
-            )
-            response.raise_for_status()
-            return True
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API key validation failed: {str(e)}")
-            return False
+        # Add the text content
+        content = message.get("content", "")
+        if content:
+            new_content.append({
+                "type": "text",
+                "text": content
+            })
+        
+        # Add images
+        for attachment in attachments:
+            if attachment.get("type", "").startswith("image/"):
+                try:
+                    image_data = attachment.get("data", "")
+                    if image_data and image_data.startswith("data:"):
+                        # Handle data URI
+                        _, encoded = image_data.split(",", 1)
+                        img_str = encoded
+                    else:
+                        # No valid image data
+                        continue
+                        
+                    new_content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": attachment["type"],
+                            "data": img_str
+                        }
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing image: {str(e)}")
+        
+        # If we have content, return the structured message
+        if new_content:
+            return {
+                "role": message["role"],
+                "content": new_content
+            }
+        
+        # Otherwise return the original message
+        return message
 
-    def get_available_models(self):
-        """Return list of available models with custom names."""
-        return [
-            {"id": model_id, "name": f"Aleph {model_id}"} 
-            for model_id in self.model_mapping.keys()
-        ]
+    async def outlet(self, response: Dict[str, Any]) -> Dict[str, Any]:
+        """Process the LLM response."""
+        # Add pipeline identifier to the response
+        if "id" not in response:
+            response["id"] = f"aleph_{response.get('id', 'response')}"
+        return response
 
-    def pipe(self, user_message: str, model_id: str, messages: List[Dict[str, Any]], body: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a message through the Anthropic API."""
+    def pipe(self, user_message: str, model_id: str, messages: List[Dict[str, Any]], body: Dict[str, Any]) -> Any:
+        """Main pipeline processing logic."""
         try:
-            # Map model ID
+            # Map the model ID
             anthropic_model_id = self.model_mapping.get(model_id)
             if not anthropic_model_id:
-                raise ValueError(f"Unknown model: {model_id}")
-            
-            # Process messages
-            processed_messages = [
-                {"role": message["role"], "content": [{"type": "text", "text": message["content"]}]}
-                for message in messages
-            ]
+                return {"error": f"Unknown model: {model_id}"}
 
-            # Prepare payload
+            # Format messages for Anthropic API
+            formatted_messages = []
+            for msg in messages:
+                if isinstance(msg.get("content"), str):
+                    formatted_messages.append({
+                        "role": msg["role"],
+                        "content": [{"type": "text", "text": msg["content"]}]
+                    })
+                elif isinstance(msg.get("content"), list):
+                    formatted_messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
+
+            # Prepare the API request
             payload = {
                 "model": anthropic_model_id,
-                "messages": processed_messages,
+                "messages": formatted_messages,
                 "max_tokens": body.get("max_tokens", 4096),
                 "temperature": body.get("temperature", 0.7),
                 "stream": body.get("stream", False)
             }
 
-            logger.info(f"Sending request to Anthropic API with payload: {json.dumps(payload, indent=2)}")
-            
-            # Send request
-            response = requests.post(self.url, headers=self.headers, json=payload)
-            response.raise_for_status()
+            # Handle streaming vs standard requests
+            if body.get("stream", False):
+                return self._stream_response(payload)
+            else:
+                return self._get_completion(payload)
 
-            return response.json()
-        
         except Exception as e:
             logger.error(f"Error in pipe: {str(e)}")
             return {"error": str(e)}
+
+    def _stream_response(self, payload: Dict[str, Any]) -> Generator:
+        """Handle streaming responses."""
+        try:
+            response = requests.post(
+                self.url, 
+                headers=self.headers, 
+                json=payload, 
+                stream=True,
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                yield f"Error: {response.status_code}"
+                return
+                
+            client = sseclient.SSEClient(response)
+            for event in client.events():
+                if not event.data:
+                    continue
+                    
+                try:
+                    data = json.loads(event.data)
+                    if data.get("type") == "content_block_delta":
+                        yield data["delta"]["text"]
+                    elif data.get("type") == "message_stop":
+                        break
+                except Exception:
+                    continue
+
+        except Exception as e:
+            yield f"Streaming error: {str(e)}"
+
+    def _get_completion(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle standard responses."""
+        try:
+            response = requests.post(
+                self.url,
+                headers=self.headers,
+                json=payload,
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                return {"error": f"API error: {response.status_code}", "details": response.text}
+                
+            return response.json()
+                
+        except Exception as e:
+            return {"error": f"API request error: {str(e)}"}
