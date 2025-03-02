@@ -1,10 +1,10 @@
 """
 title: Anthropic Manifold Pipeline
-author: Your Name
-date: 2024-01-20
-version: 1.0
+author: justinh-rahb, sriparashiva
+date: 2024-06-20
+version: 1.4
 license: MIT
-description: A pipeline for generating text using the Anthropic API.
+description: A pipeline for generating text and processing images using the Anthropic API.
 requirements: requests, sseclient-py
 environment_variables: ANTHROPIC_API_KEY
 """
@@ -15,128 +15,140 @@ import json
 from typing import List, Union, Generator, Iterator
 from pydantic import BaseModel
 import sseclient
-import logging
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from utils.pipelines.main import pop_system_message
+
 
 class Pipeline:
     class Valves(BaseModel):
         ANTHROPIC_API_KEY: str = ""
 
     def __init__(self):
-        """Initialize the Anthropic pipeline."""
         self.type = "manifold"
-        self.id = "aleph"  # Changed to match our naming scheme
-        self.name = "aleph"  # Changed to match our naming scheme
-        
-        # Define model mapping
-        self.model_mapping = {
-            "1": "claude-3-5-sonnet-20241022",
-            "2": "claude-3-sonnet-20240229",
-            "3": "claude-3-opus-20240229",
-            "4": "claude-3-haiku-20240307"
-        }
-        
-        # Initialize valves with API key from environment
+        self.id = "anthropic"
+        self.name = "anthropic/"
+
         self.valves = self.Valves(
-            **{"ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", "")}
+            **{"ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", "your-api-key-here")}
         )
         self.url = 'https://api.anthropic.com/v1/messages'
         self.update_headers()
-        logger.info("Aleph pipeline initialized")
 
     def update_headers(self):
-        """Update request headers with current API key."""
         self.headers = {
             'anthropic-version': '2023-06-01',
             'content-type': 'application/json',
             'x-api-key': self.valves.ANTHROPIC_API_KEY
         }
-        logger.debug("Headers updated")
 
-    def get_available_models(self):
-        """Return list of available models with custom names."""
+    def get_anthropic_models(self):
         return [
-            {"id": model_id, "name": f"Aleph {model_id}"} 
-            for model_id in self.model_mapping.keys()
+            {"id": "claude-3-haiku-20240307", "name": "claude-3-haiku"},
+            {"id": "claude-3-opus-20240229", "name": "claude-3-opus"},
+            {"id": "claude-3-sonnet-20240229", "name": "claude-3-sonnet"},
+            {"id": "claude-3-5-haiku-20241022", "name": "claude-3.5-haiku"},
+            {"id": "claude-3-5-sonnet-20241022", "name": "claude-3.5-sonnet"},
+            {"id": "claude-3-7-sonnet-20250219", "name": "claude-3.7-sonnet"},
         ]
 
     async def on_startup(self):
-        """Handle startup tasks."""
-        logger.info(f"Starting {self.name} pipeline")
-        if not self.valves.ANTHROPIC_API_KEY:
-            logger.warning("No Anthropic API key provided")
+        print(f"on_startup:{__name__}")
+        pass
 
     async def on_shutdown(self):
-        """Handle shutdown tasks."""
-        logger.info(f"Shutting down {self.name} pipeline")
+        print(f"on_shutdown:{__name__}")
+        pass
 
     async def on_valves_updated(self):
-        """Handle valve updates."""
         self.update_headers()
-        logger.info("Valves updated")
 
     def pipelines(self) -> List[dict]:
-        """Return available pipelines (models)."""
-        return self.get_available_models()
+        return self.get_anthropic_models()
+
+    def process_image(self, image_data):
+        if image_data["url"].startswith("data:image"):
+            mime_type, base64_data = image_data["url"].split(",", 1)
+            media_type = mime_type.split(":")[1].split(";")[0]
+            return {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": base64_data,
+                },
+            }
+        else:
+            return {
+                "type": "image",
+                "source": {"type": "url", "url": image_data["url"]},
+            }
 
     def pipe(
         self, user_message: str, model_id: str, messages: List[dict], body: dict
     ) -> Union[str, Generator, Iterator]:
-        """Process a message through the Anthropic API."""
         try:
-            # Map our custom model name to Anthropic model ID
-            anthropic_model_id = self.model_mapping.get(model_id)
-            if not anthropic_model_id:
-                raise ValueError(f"Unknown model: {model_id}")
-                
-            # Clean up body
+            # Remove unnecessary keys
             for key in ['user', 'chat_id', 'title']:
                 body.pop(key, None)
 
-            # Process messages
-            processed_messages = []
-            for message in messages:
-                if isinstance(message.get("content"), str):
-                    processed_messages.append({
-                        "role": message["role"],
-                        "content": [{"type": "text", "text": message["content"]}]
-                    })
+            system_message, messages = pop_system_message(messages)
 
-            # Prepare payload with the actual Anthropic model ID
+            processed_messages = []
+            image_count = 0
+            total_image_size = 0
+
+            for message in messages:
+                processed_content = []
+                if isinstance(message.get("content"), list):
+                    for item in message["content"]:
+                        if item["type"] == "text":
+                            processed_content.append({"type": "text", "text": item["text"]})
+                        elif item["type"] == "image_url":
+                            if image_count >= 5:
+                                raise ValueError("Maximum of 5 images per API call exceeded")
+
+                            processed_image = self.process_image(item["image_url"])
+                            processed_content.append(processed_image)
+
+                            if processed_image["source"]["type"] == "base64":
+                                image_size = len(processed_image["source"]["data"]) * 3 / 4
+                            else:
+                                image_size = 0
+
+                            total_image_size += image_size
+                            if total_image_size > 100 * 1024 * 1024:
+                                raise ValueError("Total size of images exceeds 100 MB limit")
+
+                            image_count += 1
+                else:
+                    processed_content = [{"type": "text", "text": message.get("content", "")}]
+
+                processed_messages.append({"role": message["role"], "content": processed_content})
+
+            # Prepare the payload
             payload = {
-                "model": anthropic_model_id,  # Use mapped Anthropic model ID
+                "model": model_id,
                 "messages": processed_messages,
                 "max_tokens": body.get("max_tokens", 4096),
-                "temperature": body.get("temperature", 0.7),
-                "stream": body.get("stream", False)
+                "temperature": body.get("temperature", 0.8),
+                "top_k": body.get("top_k", 40),
+                "top_p": body.get("top_p", 0.9),
+                "stop_sequences": body.get("stop", []),
+                **({"system": str(system_message)} if system_message else {}),
+                "stream": body.get("stream", False),
             }
 
-            logger.info(f"Processing request with model: Aleph {model_id} (Anthropic: {anthropic_model_id})")
-            
-            # Handle streaming vs non-streaming
             if body.get("stream", False):
                 return self.stream_response(payload)
             else:
                 return self.get_completion(payload)
-
         except Exception as e:
-            logger.error(f"Error in pipe: {str(e)}")
-            return f"Error: {str(e)}"
+            return f"Error: {e}"
 
     def stream_response(self, payload: dict) -> Generator:
-        """Handle streaming responses from Anthropic API."""
-        try:
-            response = requests.post(
-                self.url,
-                headers=self.headers,
-                json=payload,
-                stream=True
-            )
-            response.raise_for_status()
+        response = requests.post(self.url, headers=self.headers, json=payload, stream=True)
 
+        if response.status_code == 200:
             client = sseclient.SSEClient(response)
             for event in client.events():
                 try:
@@ -148,23 +160,17 @@ class Pipeline:
                     elif data["type"] == "message_stop":
                         break
                 except json.JSONDecodeError:
-                    logger.error(f"Failed to parse JSON: {event.data}")
+                    print(f"Failed to parse JSON: {event.data}")
                 except KeyError as e:
-                    logger.error(f"Unexpected data structure: {e}")
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Streaming error: {str(e)}")
-            raise Exception(f"Streaming error: {str(e)}")
+                    print(f"Unexpected data structure: {e}")
+                    print(f"Full data: {data}")
+        else:
+            raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def get_completion(self, payload: dict) -> str:
-        """Handle non-streaming responses from Anthropic API."""
-        try:
-            response = requests.post(self.url, headers=self.headers, json=payload)
-            response.raise_for_status()
-            
-            result = response.json()
-            return result["content"][0]["text"] if "content" in result and result["content"] else ""
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Completion error: {str(e)}")
-            raise Exception(f"Completion error: {str(e)}")
+        response = requests.post(self.url, headers=self.headers, json=payload)
+        if response.status_code == 200:
+            res = response.json()
+            return res["content"][0]["text"] if "content" in res and res["content"] else ""
+        else:
+            raise Exception(f"Error: {response.status_code} - {response.text}")
