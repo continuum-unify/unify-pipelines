@@ -26,7 +26,14 @@ logger = logging.getLogger(__name__)
 class Pipeline:
     class Valves(BaseModel):
         ANTHROPIC_API_KEY: str = ""
+<<<<<<< HEAD
         MAX_IMAGE_SIZE: int = 20 * 1024 * 1024  # 20MB limit
+=======
+        MAX_IMAGE_SIZE: int = 100 * 1024 * 1024  # 100MB limit
+        MAX_IMAGES_PER_REQUEST: int = 20  # Anthropic's limit for claude.ai
+        MAX_IMAGE_DIMENSION: int = 8000  # Maximum pixel dimension
+        MIN_IMAGE_DIMENSION: int = 200   # Minimum recommended dimension
+>>>>>>> ab66ed32c5ad7730a7b9a7c9dce2ab2b878a0e72
 
     def __init__(self):
         """Initialize the Aleph pipeline."""
