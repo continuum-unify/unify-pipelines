@@ -2,9 +2,9 @@
 title: ResetData Llama Manifold Pipeline
 author: Continuum
 date: 2024-12-01
-version: 1.2
+version: 1.3
 license: MIT
-description: A pipeline for ResetData hosted Llama models with proper token limits.
+description: A pipeline for ResetData hosted Llama models with configurable token limits.
 requirements: requests
 environment_variables: RESETDATA_API_KEY
 """
@@ -13,13 +13,15 @@ import os
 import requests
 import json
 from typing import List, Union, Generator, Iterator
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Pipeline:
     class Valves(BaseModel):
-        RESETDATA_API_KEY: str = ""
-        RESETDATA_BASE_URL: str = "https://models.au-syd.resetdata.ai/v1"
+        RESETDATA_API_KEY: str = Field(default="", description="Your ResetData API key")
+        RESETDATA_BASE_URL: str = Field(default="https://models.au-syd.resetdata.ai/v1", description="ResetData API base URL")
+        DEFAULT_MAX_TOKENS: int = Field(default=32768, description="Default maximum tokens for responses (up to 128000 for Maverick)")
+        DEFAULT_TEMPERATURE: float = Field(default=0.7, description="Default temperature (0.0-1.0)")
 
     def __init__(self):
         self.type = "manifold"
@@ -28,7 +30,9 @@ class Pipeline:
 
         self.valves = self.Valves(
             RESETDATA_API_KEY=os.getenv("RESETDATA_API_KEY", ""),
-            RESETDATA_BASE_URL=os.getenv("RESETDATA_BASE_URL", "https://models.au-syd.resetdata.ai/v1")
+            RESETDATA_BASE_URL=os.getenv("RESETDATA_BASE_URL", "https://models.au-syd.resetdata.ai/v1"),
+            DEFAULT_MAX_TOKENS=int(os.getenv("RESETDATA_MAX_TOKENS", "32768")),
+            DEFAULT_TEMPERATURE=float(os.getenv("RESETDATA_TEMPERATURE", "0.7"))
         )
         
         # Map simplified IDs to actual ResetData model IDs
@@ -70,17 +74,17 @@ class Pipeline:
         """
         configs = {
             "llama-4-maverick": {
-                "max_tokens": 32768,
+                "max_tokens": self.valves.DEFAULT_MAX_TOKENS,
                 "context_window": 1000000,
                 "supports_vision": True,
             },
             "llama-3.2-vision": {
-                "max_tokens": 8192,
+                "max_tokens": min(self.valves.DEFAULT_MAX_TOKENS, 8192),
                 "context_window": 128000,
                 "supports_vision": True,
             },
             "llama-3.1-8b": {
-                "max_tokens": 8192,
+                "max_tokens": min(self.valves.DEFAULT_MAX_TOKENS, 8192),
                 "context_window": 128000,
                 "supports_vision": False,
             },
@@ -93,6 +97,7 @@ class Pipeline:
 
     async def on_startup(self):
         print(f"on_startup:{__name__}")
+        print(f"Default max_tokens: {self.valves.DEFAULT_MAX_TOKENS}")
         pass
 
     async def on_shutdown(self):
@@ -101,6 +106,7 @@ class Pipeline:
 
     async def on_valves_updated(self):
         print(f"on_valves_updated:{__name__}")
+        print(f"Updated max_tokens: {self.valves.DEFAULT_MAX_TOKENS}")
         pass
 
     def pipelines(self) -> List[dict]:
@@ -147,13 +153,14 @@ class Pipeline:
             }
 
             # Prepare the payload with ACTUAL model ID for ResetData API
+            # Use body's max_tokens if provided, otherwise use valve default
             requested_max_tokens = body.get("max_tokens", model_config["max_tokens"])
             
             payload = {
-                "model": actual_model_id,  # Use the actual ResetData model ID here
+                "model": actual_model_id,
                 "messages": api_messages,
                 "max_tokens": requested_max_tokens,
-                "temperature": body.get("temperature", 0.7),
+                "temperature": body.get("temperature", self.valves.DEFAULT_TEMPERATURE),
                 "top_p": body.get("top_p", 0.9),
                 "stream": body.get("stream", True),
             }
