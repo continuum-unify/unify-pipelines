@@ -2,7 +2,7 @@
 title: Anthropic Manifold Pipeline
 author: justinh-rahb, sriparashiva (corrected version)
 date: 2024-06-20
-version: 1.6
+version: 1.5
 license: MIT
 description: A pipeline for generating text and processing images using the Anthropic API.
 requirements: requests, sseclient-py
@@ -44,76 +44,19 @@ class Pipeline:
 
     def get_anthropic_models(self):
         return [
-            # ============================================
-            # Claude 4.5 Models (Latest - Recommended)
-            # ============================================
-            {"id": "claude-sonnet-4-5-20250929", "name": "claude-sonnet-4.5 (latest)"},
-            {"id": "claude-haiku-4-5-20250929", "name": "claude-haiku-4.5 (fastest)"},
-            {"id": "claude-opus-4-5-20250929", "name": "claude-opus-4.5 (premium)"},
-            
-            # ============================================
-            # Claude 4.1 Models
-            # ============================================
-            {"id": "claude-opus-4-1-20250929", "name": "claude-opus-4.1"},
-            
-            # ============================================
-            # Claude 4 Models
-            # ============================================
+            # Claude 3 models
+            {"id": "claude-3-haiku-20240307", "name": "claude-3-haiku"},
+            {"id": "claude-3-sonnet-20240229", "name": "claude-3-sonnet"},
+            {"id": "claude-3-opus-20240229", "name": "claude-3-opus"},
+            # Claude 3.5 models
+            {"id": "claude-3-5-haiku-20241022", "name": "claude-3.5-haiku"},
+            {"id": "claude-3-5-sonnet-20241022", "name": "claude-3.5-sonnet"},
+            # Claude 3.7 models
+            {"id": "claude-3-7-sonnet-20250219", "name": "claude-3.7-sonnet"},
+            # Claude 4 models (latest)
             {"id": "claude-sonnet-4-20250514", "name": "claude-sonnet-4"},
             {"id": "claude-opus-4-20250514", "name": "claude-opus-4"},
-            
-            # ============================================
-            # Claude 3.7 Models
-            # ============================================
-            {"id": "claude-3-7-sonnet-20250219", "name": "claude-3.7-sonnet"},
-            
-            # ============================================
-            # Claude 3.5 Models
-            # ============================================
-            {"id": "claude-3-5-sonnet-20241022", "name": "claude-3.5-sonnet"},
-            {"id": "claude-3-5-haiku-20241022", "name": "claude-3.5-haiku"},
-            
-            # ============================================
-            # Claude 3 Models (Legacy)
-            # ============================================
-            {"id": "claude-3-opus-20240229", "name": "claude-3-opus"},
-            {"id": "claude-3-sonnet-20240229", "name": "claude-3-sonnet"},
-            {"id": "claude-3-haiku-20240307", "name": "claude-3-haiku"},
         ]
-
-    def get_default_max_tokens(self, model_id: str) -> int:
-        """
-        Return appropriate max_tokens based on model capability.
-        
-        Claude 4.5 Sonnet/Haiku/Opus: 64K max output
-        Claude 4.1 Opus: 32K max output
-        Claude 4 Sonnet: 64K max output
-        Claude 4 Opus: 32K max output
-        Claude 3.7 Sonnet: 64K max output
-        Claude 3.5 models: 8K max output
-        Claude 3 models: 4K max output
-        """
-        if "4-5" in model_id or "4.5" in model_id:
-            # Claude 4.5 models - 64K max
-            return 16384
-        elif "4-1" in model_id or "4.1" in model_id:
-            # Claude 4.1 Opus - 32K max
-            return 16384
-        elif "claude-sonnet-4" in model_id:
-            # Claude 4 Sonnet - 64K max
-            return 16384
-        elif "claude-opus-4" in model_id:
-            # Claude 4 Opus - 32K max
-            return 16384
-        elif "claude-3-7" in model_id:
-            # Claude 3.7 - 64K max
-            return 16384
-        elif "claude-3-5" in model_id:
-            # Claude 3.5 - 8K max
-            return 8192
-        else:
-            # Claude 3 and earlier - 4K max
-            return 4096
 
     async def on_startup(self):
         print(f"on_startup:{__name__}")
@@ -197,9 +140,6 @@ class Pipeline:
 
             system_message, messages = pop_system_message(messages)
 
-            # Get model-appropriate max tokens
-            default_max_tokens = self.get_default_max_tokens(model_id)
-
             processed_messages = []
             image_count = 0
             total_image_size = 0
@@ -234,11 +174,11 @@ class Pipeline:
 
                 processed_messages.append({"role": message["role"], "content": processed_content})
 
-            # Prepare the payload with model-aware max_tokens
+            # Prepare the payload
             payload = {
                 "model": model_id,
                 "messages": processed_messages,
-                "max_tokens": body.get("max_tokens", default_max_tokens),
+                "max_tokens": body.get("max_tokens", 4096),
                 "temperature": body.get("temperature", 0.8),
                 "top_k": body.get("top_k", 40),
                 "top_p": body.get("top_p", 0.9),
@@ -261,7 +201,7 @@ class Pipeline:
                 headers=self.headers, 
                 json=payload, 
                 stream=True,
-                timeout=300  # Increased for longer responses
+                timeout=120
             )
 
             if response.status_code == 200:
@@ -303,7 +243,7 @@ class Pipeline:
                 self.url, 
                 headers=self.headers, 
                 json=payload,
-                timeout=300  # Increased for longer responses
+                timeout=120
             )
             
             if response.status_code == 200:
