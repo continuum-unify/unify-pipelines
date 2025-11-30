@@ -2,7 +2,7 @@
 title: ResetData Llama Manifold Pipeline
 author: Continuum
 date: 2024-12-01
-version: 1.0
+version: 1.2
 license: MIT
 description: A pipeline for ResetData hosted Llama models with proper token limits.
 requirements: requests
@@ -30,76 +30,61 @@ class Pipeline:
             RESETDATA_API_KEY=os.getenv("RESETDATA_API_KEY", ""),
             RESETDATA_BASE_URL=os.getenv("RESETDATA_BASE_URL", "https://models.au-syd.resetdata.ai/v1")
         )
+        
+        # Map simplified IDs to actual ResetData model IDs
+        self.model_map = {
+            "llama-4-maverick": "meta-llama/Llama-4-Maverick-17B-128E-Instruct:shared",
+            "llama-3.2-vision": "meta/llama-3.2-11b-vision-instruct:shared",
+            "llama-3.1-8b": "meta/llama-3.1-8b-instruct:shared",
+        }
 
     def get_resetdata_models(self):
         """
-        Define available ResetData models.
-        Based on API response from https://models.au-syd.resetdata.ai/v1/models
+        Define available ResetData models with simplified IDs.
+        Using simple IDs to avoid URL encoding issues with special characters.
         """
         return [
-            # ============================================
-            # Llama 4 - Latest and Most Capable
-            # ============================================
             {
-                "id": "meta-llama/Llama-4-Maverick-17B-128E-Instruct:shared",
+                "id": "llama-4-maverick",
                 "name": "Llama 4 Maverick 17B (1M context)"
             },
-            
-            # ============================================
-            # Llama 3.2 - Vision Capable
-            # ============================================
             {
-                "id": "meta/llama-3.2-11b-vision-instruct:shared",
+                "id": "llama-3.2-vision",
                 "name": "Llama 3.2 11B Vision Instruct"
             },
-            
-            # ============================================
-            # Llama 3.1 - Fast and Efficient
-            # ============================================
             {
-                "id": "meta/llama-3.1-8b-instruct:shared",
+                "id": "llama-3.1-8b",
                 "name": "Llama 3.1 8B Instruct (Fast)"
             },
-            
-            # ============================================
-            # Embedding & Reranking Models (for RAG)
-            # Note: These may not work for chat completions
-            # ============================================
-            # {
-            #     "id": "nvidia/llama-3.2-nv-embedqa-1b-v2:shared",
-            #     "name": "Llama 3.2 NV EmbedQA 1B V2"
-            # },
-            # {
-            #     "id": "nvidia/llama-3.2-nv-rerankqa-1b-v2:shared",
-            #     "name": "Llama 3.2 NV RerankQA 1B V2"
-            # },
         ]
+
+    def get_actual_model_id(self, simplified_id: str) -> str:
+        """
+        Convert simplified model ID to actual ResetData model ID.
+        """
+        return self.model_map.get(simplified_id, simplified_id)
 
     def get_model_config(self, model_id: str) -> dict:
         """
         Return model-specific configuration including max tokens.
         """
         configs = {
-            # Llama 4 Maverick - 1M context, large output
-            "meta-llama/Llama-4-Maverick-17B-128E-Instruct:shared": {
-                "max_tokens": 32768,  # 32K default output
-                "context_window": 1000000,  # 1M tokens
+            "llama-4-maverick": {
+                "max_tokens": 32768,
+                "context_window": 1000000,
                 "supports_vision": True,
             },
-            # Llama 3.2 Vision
-            "meta/llama-3.2-11b-vision-instruct:shared": {
+            "llama-3.2-vision": {
                 "max_tokens": 8192,
                 "context_window": 128000,
                 "supports_vision": True,
             },
-            # Llama 3.1 8B
-            "meta/llama-3.1-8b-instruct:shared": {
+            "llama-3.1-8b": {
                 "max_tokens": 8192,
                 "context_window": 128000,
                 "supports_vision": False,
             },
         }
-        # Default config for unknown models
         return configs.get(model_id, {
             "max_tokens": 8192,
             "context_window": 128000,
@@ -131,6 +116,14 @@ class Pipeline:
 
             # Get model-specific configuration
             model_config = self.get_model_config(model_id)
+            
+            # Convert simplified ID to actual ResetData model ID
+            actual_model_id = self.get_actual_model_id(model_id)
+            
+            api_key = self.valves.RESETDATA_API_KEY
+            
+            if not api_key:
+                return "Error: No API key configured. Please set RESETDATA_API_KEY in the pipeline valves or environment."
 
             # Extract system message if present
             system_message = None
@@ -150,15 +143,14 @@ class Pipeline:
             # Prepare headers
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.valves.RESETDATA_API_KEY}"
+                "Authorization": f"Bearer {api_key}"
             }
 
-            # Prepare the payload
-            # Use body's max_tokens if provided, otherwise use model default
+            # Prepare the payload with ACTUAL model ID for ResetData API
             requested_max_tokens = body.get("max_tokens", model_config["max_tokens"])
             
             payload = {
-                "model": model_id,
+                "model": actual_model_id,  # Use the actual ResetData model ID here
                 "messages": api_messages,
                 "max_tokens": requested_max_tokens,
                 "temperature": body.get("temperature", 0.7),
@@ -194,15 +186,14 @@ class Pipeline:
                 headers=headers,
                 json=payload,
                 stream=True,
-                timeout=600  # 10 minute timeout for long responses
+                timeout=600
             )
 
             if response.status_code == 200:
                 for line in response.iter_lines(decode_unicode=True):
                     if line:
-                        # Skip empty lines and handle SSE format
                         if line.startswith("data: "):
-                            data_str = line[6:]  # Remove "data: " prefix
+                            data_str = line[6:]
                             if data_str.strip() == "[DONE]":
                                 break
                             try:
@@ -213,7 +204,6 @@ class Pipeline:
                                     if content:
                                         yield content
                             except json.JSONDecodeError:
-                                # Skip malformed JSON
                                 continue
             else:
                 error_detail = response.text
@@ -237,7 +227,7 @@ class Pipeline:
                 url,
                 headers=headers,
                 json=payload,
-                timeout=600  # 10 minute timeout for long responses
+                timeout=600
             )
 
             if response.status_code == 200:
