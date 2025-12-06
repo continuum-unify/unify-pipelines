@@ -1,9 +1,9 @@
 """
 title: Care Plan Assistant via n8n
 author: Continuum Labs
-version: 1.0.0
+version: 1.2.0
 license: MIT
-description: AI-powered care plan assistant that integrates with n8n workflow automation for aged care facilities
+description: AI-powered care plan assistant that integrates with n8n workflow automation for aged care facilities. Guides users through 6 sections to create comprehensive, person-centred care plans.
 requirements: requests
 environment_variables: N8N_WEBHOOK_URL, N8N_AUTH_TOKEN
 """
@@ -12,16 +12,24 @@ from typing import List, Union, Generator, Iterator, Optional
 import requests
 import os
 import json
+import uuid
+import hashlib
+import time
 from pydantic import BaseModel, Field
 
 
 class Pipeline:
     """
-    Care Plan Assistant Pipeline
+    Care Plan Assistant Pipeline v1.2.0
     
     This pipeline connects Open WebUI to an n8n workflow that processes
-    care plan requests using AI agents with access to Aged Care Act compliance,
-    Quality Standards, and best practices documentation.
+    care plan requests using AI agents with memory for multi-turn conversations.
+    
+    Features:
+    - Unique session IDs per conversation
+    - Guided 6-section care plan creation
+    - Formatted care plan output
+    - Debug logging for troubleshooting
     """
     
     class Valves(BaseModel):
@@ -46,12 +54,12 @@ class Pipeline:
         )
         
         request_timeout: int = Field(
-            default=60,
-            description="Timeout in seconds for n8n requests"
+            default=180,
+            description="Timeout in seconds for n8n requests (longer for care plan generation)"
         )
         
         enable_debug_logging: bool = Field(
-            default=False,
+            default=True,
             description="Enable detailed debug logging"
         )
         
@@ -62,42 +70,31 @@ class Pipeline:
 
     def __init__(self):
         """Initialize the pipeline"""
-        self.type = "manifold"  # Acts as a model provider
+        self.type = "manifold"
         self.id = "care_plan_n8n"
         self.name = "Care Plan Assistant (n8n)"
         self.valves = self.Valves()
+        # Store session IDs to maintain consistency within a conversation
+        self._session_cache = {}
 
     async def on_startup(self):
         """Called when the pipeline is loaded"""
-        print(f"✅ {self.name} pipeline initialized")
+        print(f"✅ {self.name} pipeline initialized (v1.2.0)")
         print(f"📡 n8n webhook: {self.valves.n8n_webhook_url}")
-        
-        # Test connection to n8n
-        try:
-            response = requests.get(
-                self.valves.n8n_webhook_url.replace('/webhook/', '/webhook-test/'),
-                timeout=5
-            )
-            if response.status_code == 200:
-                print("✅ n8n connection test successful")
-            else:
-                print(f"⚠️ n8n connection test returned status {response.status_code}")
-        except Exception as e:
-            print(f"⚠️ Could not connect to n8n: {str(e)}")
+        print(f"⏱️ Timeout: {self.valves.request_timeout}s")
 
     async def on_shutdown(self):
         """Called when the pipeline is unloaded"""
         print(f"👋 {self.name} pipeline shutting down")
+        self._session_cache.clear()
 
     def pipelines(self) -> List[dict]:
-        """
-        Define available models/pipelines
-        """
+        """Define available models/pipelines"""
         return [
             {
                 "id": "care-plan-assistant",
                 "name": "Care Plan Assistant",
-                "description": "AI assistant for creating and managing aged care plans with compliance checking"
+                "description": "AI assistant for creating comprehensive, person-centred aged care plans"
             }
         ]
 
@@ -110,20 +107,14 @@ class Pipeline:
     ) -> Union[str, Generator, Iterator]:
         """
         Main pipeline function - processes each message
-        
-        Args:
-            user_message: The latest user message
-            model_id: The model ID being used
-            messages: Full conversation history
-            body: Complete request body from Open WebUI
-        
-        Returns:
-            AI response as string
         """
         
         if self.valves.enable_debug_logging:
-            print(f"📨 Processing message: {user_message[:100]}...")
-            print(f"📋 Message count: {len(messages)}")
+            print(f"\n{'='*60}")
+            print(f"📨 Care Plan Assistant - New Message")
+            print(f"{'='*60}")
+            print(f"Message: {user_message[:100]}...")
+            print(f"Message count in history: {len(messages)}")
         
         try:
             # Prepare payload for n8n
@@ -134,10 +125,11 @@ class Pipeline:
                 body=body
             )
             
-            # Send request to n8n webhook
             if self.valves.enable_debug_logging:
-                print(f"🔄 Sending to n8n: {self.valves.n8n_webhook_url}")
+                print(f"🆔 Session ID: {payload['chat']['id']}")
+                print(f"🔄 Sending to: {self.valves.n8n_webhook_url}")
             
+            # Send request to n8n
             response = requests.post(
                 self.valves.n8n_webhook_url,
                 headers={
@@ -148,12 +140,11 @@ class Pipeline:
                 timeout=self.valves.request_timeout
             )
             
-            # Handle response
             response.raise_for_status()
             result = response.json()
             
             if self.valves.enable_debug_logging:
-                print(f"✅ Received response from n8n")
+                print(f"✅ Response received from n8n")
             
             # Extract AI response
             ai_response = self._extract_response(result)
@@ -165,30 +156,90 @@ class Pipeline:
             return ai_response
             
         except requests.exceptions.Timeout:
-            error_msg = f"⏱️ Request to n8n timed out after {self.valves.request_timeout} seconds"
-            print(error_msg)
-            return "The request is taking longer than expected. Please try again with a simpler question or contact support."
+            print(f"⏱️ Request timed out after {self.valves.request_timeout}s")
+            return "The care plan is taking longer than expected to generate. Please try again - if creating a full care plan, this may take up to a minute."
             
         except requests.exceptions.ConnectionError as e:
-            error_msg = f"🔌 Connection error to n8n: {str(e)}"
-            print(error_msg)
+            print(f"🔌 Connection error: {str(e)}")
             return self.valves.fallback_message
             
         except requests.exceptions.HTTPError as e:
-            error_msg = f"❌ HTTP error from n8n: {e.response.status_code}"
-            print(error_msg)
-            
+            print(f"❌ HTTP error: {e.response.status_code}")
             if e.response.status_code == 401:
                 return "Authentication error with the care plan service. Please contact your administrator."
             elif e.response.status_code == 404:
-                return "The care plan service endpoint was not found. Please verify the n8n workflow is active."
+                return "The care plan service is not available. Please verify the n8n workflow is active."
             else:
                 return f"Error communicating with care plan service (HTTP {e.response.status_code}). Please try again."
             
         except Exception as e:
-            error_msg = f"💥 Unexpected error: {type(e).__name__} - {str(e)}"
-            print(error_msg)
-            return f"An unexpected error occurred. Please try again or contact support."
+            print(f"💥 Unexpected error: {type(e).__name__} - {str(e)}")
+            return "An unexpected error occurred. Please try again or contact support."
+
+    def _get_session_id(self, body: dict, messages: List[dict]) -> str:
+        """
+        Get or create a unique session ID for this conversation.
+        
+        The session ID must be:
+        1. Unique per conversation (different chats get different IDs)
+        2. Consistent within a conversation (same chat always gets same ID)
+        
+        Args:
+            body: The request body from Open WebUI
+            messages: The conversation messages
+            
+        Returns:
+            A unique session identifier string
+        """
+        chat_id = None
+        source = None
+        
+        # Try to get chat ID from various possible locations
+        possible_sources = [
+            ("body.chat_id", body.get("chat_id")),
+            ("body.id", body.get("id")),
+            ("body.session_id", body.get("session_id")),
+            ("body.metadata.chat_id", body.get("metadata", {}).get("chat_id")),
+            ("body.metadata.session_id", body.get("metadata", {}).get("session_id")),
+        ]
+        
+        for src_name, src_value in possible_sources:
+            if src_value and src_value != "default":
+                chat_id = str(src_value)
+                source = src_name
+                break
+        
+        # If no chat ID found, generate a deterministic one
+        if not chat_id:
+            user_id = body.get("user", {}).get("id", "anonymous")
+            
+            # Create a deterministic session ID based on:
+            # - User ID
+            # - First user message content (to differentiate conversations)
+            # - Approximate start time (rounded to 10-minute windows)
+            
+            first_user_message = ""
+            for msg in messages:
+                if msg.get("role") == "user":
+                    first_user_message = msg.get("content", "")[:200]
+                    break
+            
+            if first_user_message:
+                # Hash the first message to create consistent session ID
+                hash_input = f"{user_id}:{first_user_message}"
+                chat_id = "cp_" + hashlib.sha256(hash_input.encode()).hexdigest()[:12]
+                source = "generated_from_first_message"
+            else:
+                # Fallback: use user ID + timestamp window
+                time_window = int(time.time() // 600)  # 10-minute windows
+                hash_input = f"{user_id}:{time_window}"
+                chat_id = "cp_" + hashlib.sha256(hash_input.encode()).hexdigest()[:12]
+                source = "generated_from_time_window"
+        
+        if self.valves.enable_debug_logging:
+            print(f"🔑 Session ID: {chat_id} (source: {source})")
+        
+        return chat_id
 
     def _prepare_payload(
         self,
@@ -197,61 +248,56 @@ class Pipeline:
         model_id: str,
         body: dict
     ) -> dict:
-        """
-        Prepare the payload to send to n8n
+        """Prepare the payload to send to n8n"""
         
-        Args:
-            user_message: Latest user message
-            messages: Full conversation history
-            model_id: Model identifier
-            body: Original request body
+        session_id = self._get_session_id(body, messages)
         
-        Returns:
-            Formatted payload dictionary
-        """
+        # Get user info
+        user_info = body.get("user", {})
+        
         return {
             "message": user_message,
             "messages": messages,
             "user": {
-                "id": body.get("user", {}).get("id", "anonymous"),
-                "name": body.get("user", {}).get("name", "User"),
-                "email": body.get("user", {}).get("email", "")
+                "id": user_info.get("id", "anonymous"),
+                "name": user_info.get("name", "Care Staff"),
+                "email": user_info.get("email", "")
             },
             "chat": {
-                "id": body.get("chat_id", "default"),
+                "id": session_id,
                 "model": model_id
             },
             "metadata": {
                 "timestamp": body.get("timestamp"),
                 "stream": body.get("stream", False),
                 "pipeline": self.name,
-                "version": "1.0.0"
+                "version": "1.2.0",
+                "message_count": len(messages)
             }
         }
 
     def _extract_response(self, result: dict) -> str:
-        """
-        Extract the AI response from n8n's response
+        """Extract the AI response from n8n's response"""
         
-        Args:
-            result: JSON response from n8n
-        
-        Returns:
-            Extracted response text
-        """
-        # Try different possible response structures
         if isinstance(result, str):
             return result
         
         if isinstance(result, dict):
-            # Try common response keys
-            for key in ["response", "output", "text", "content", "message"]:
+            # Try common response keys in order of likelihood
+            for key in ["output", "response", "text", "content", "message"]:
                 if key in result and result[key]:
-                    return str(result[key])
+                    value = result[key]
+                    if isinstance(value, str):
+                        return value
+                    elif isinstance(value, dict):
+                        # Recursively extract from nested dict
+                        return self._extract_response(value)
             
-            # If it's a nested structure, try to find text
-            if "data" in result and isinstance(result["data"], dict):
+            # Check for nested data structure
+            if "data" in result:
                 return self._extract_response(result["data"])
         
-        # If we can't find a response, return empty string
+        if isinstance(result, list) and len(result) > 0:
+            return self._extract_response(result[0])
+        
         return ""
