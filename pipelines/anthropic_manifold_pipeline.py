@@ -1,8 +1,9 @@
 """
 title: Anthropic Manifold Pipeline (Enhanced)
 author: Continuum Unify
-version: 2.0.1
+version: 2.0.2
 description: Enhanced Claude models integration with extended thinking, prompt caching, and token tracking
+requirements: sseclient-py, requests
 
 Features:
 - Extended thinking support for complex reasoning (Claude 3.7+)
