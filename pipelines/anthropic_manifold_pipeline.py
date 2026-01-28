@@ -1,7 +1,7 @@
 """
 title: Anthropic Manifold Pipeline (Enhanced)
 author: Continuum Unify
-version: 2.0.0
+version: 2.0.1
 description: Enhanced Claude models integration with extended thinking, prompt caching, and token tracking
 
 Features:
@@ -12,6 +12,7 @@ Features:
 - Data sovereignty warnings for non-Australian processing
 
 Changelog:
+- v2.0.1: Fixed beta headers for extended thinking and prompt caching, updated API version
 - v2.0.0: Added extended thinking, increased token limits, Claude 4.5 updates
 - v1.0.0: Initial pipeline with basic Claude integration
 """
@@ -80,13 +81,6 @@ class Pipeline:
         self.name = "anthropic/"
         self.valves = self.Valves()
         
-        # API configuration
-        self.url = self.valves.ANTHROPIC_API_URL
-        self.headers = {
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        }
-        
         # Token usage accumulator (for tracking)
         self.session_usage = {
             "input_tokens": 0,
@@ -95,6 +89,33 @@ class Pipeline:
             "cache_read_input_tokens": 0,
             "thinking_tokens": 0
         }
+
+    def _get_headers(self, use_thinking: bool = False, use_caching: bool = False) -> dict:
+        """
+        Build headers for Anthropic API requests.
+        
+        Beta features require specific beta headers to be included.
+        Multiple beta features can be combined with comma separation.
+        """
+        headers = {
+            "anthropic-version": "2024-10-22",  # Updated for Claude 4.x features
+            "content-type": "application/json",
+            "x-api-key": self.valves.ANTHROPIC_API_KEY,
+        }
+        
+        # Build beta header for optional features
+        beta_features = []
+        
+        if use_thinking:
+            beta_features.append("interleaved-thinking-2025-05-14")
+        
+        if use_caching:
+            beta_features.append("prompt-caching-2024-07-31")
+        
+        if beta_features:
+            headers["anthropic-beta"] = ",".join(beta_features)
+        
+        return headers
 
     def get_anthropic_models(self) -> List[dict]:
         """
@@ -106,7 +127,7 @@ class Pipeline:
         """
         return [
             # ═══════════════════════════════════════════════════════════════════
-            # CLAUDE 4.5 MODELS (Latest - January 2025+)
+            # CLAUDE 4.5 MODELS (Latest - September-November 2025)
             # - 200K context (1M beta available)
             # - 64K max output tokens
             # - Extended thinking support
@@ -124,7 +145,7 @@ class Pipeline:
                 "knowledge_cutoff": "January 2025"
             },
             {
-                "id": "claude-haiku-4-5-20250929",
+                "id": "claude-haiku-4-5-20251001",
                 "name": "Claude Haiku 4.5 (Fastest)",
                 "description": "Fastest responses, cost-effective. $1/$5 per MTok.",
                 "context_window": 200000,
@@ -135,7 +156,7 @@ class Pipeline:
                 "knowledge_cutoff": "February 2025"
             },
             {
-                "id": "claude-opus-4-5-20250929",
+                "id": "claude-opus-4-5-20251101",
                 "name": "Claude Opus 4.5 (Premium Intelligence)",
                 "description": "Maximum capability for complex tasks. $5/$25 per MTok.",
                 "context_window": 200000,
@@ -147,22 +168,7 @@ class Pipeline:
             },
             
             # ═══════════════════════════════════════════════════════════════════
-            # CLAUDE 4.1 MODELS
-            # ═══════════════════════════════════════════════════════════════════
-            {
-                "id": "claude-sonnet-4-1-20250514",
-                "name": "Claude Sonnet 4.1",
-                "description": "Previous generation Sonnet with strong capabilities.",
-                "context_window": 200000,
-                "max_output": 65536,
-                "supports_thinking": True,
-                "supports_vision": True,
-                "supports_caching": True,
-                "knowledge_cutoff": "April 2024"
-            },
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # CLAUDE 4 MODELS
+            # CLAUDE 4 MODELS (May 2025)
             # ═══════════════════════════════════════════════════════════════════
             {
                 "id": "claude-sonnet-4-20250514",
@@ -181,21 +187,6 @@ class Pipeline:
                 "description": "Claude 4 generation premium model.",
                 "context_window": 200000,
                 "max_output": 65536,
-                "supports_thinking": True,
-                "supports_vision": True,
-                "supports_caching": True,
-                "knowledge_cutoff": "April 2024"
-            },
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # CLAUDE 3.7 MODELS (First extended thinking support)
-            # ═══════════════════════════════════════════════════════════════════
-            {
-                "id": "claude-3-7-sonnet-20250219",
-                "name": "Claude 3.7 Sonnet",
-                "description": "First model with extended thinking capability.",
-                "context_window": 200000,
-                "max_output": 16384,
                 "supports_thinking": True,
                 "supports_vision": True,
                 "supports_caching": True,
@@ -419,21 +410,20 @@ class Pipeline:
         
         return system_message, processed_messages
 
-    def build_system_message(self, system_message: Optional[str]) -> Union[str, List[dict], None]:
+    def build_system_message(self, system_message: Optional[str], use_caching: bool) -> Union[str, List[dict], None]:
         """
         Builds system message with optional caching.
         
         Prompt caching can reduce costs by 90% for repeated system prompts.
         Caching is applied when:
-        - ENABLE_PROMPT_CACHING is True
+        - use_caching is True
         - System prompt exceeds MIN_CACHE_TOKENS (default 1024)
         """
         if not system_message:
             return None
         
         # Check if caching should be applied
-        if (self.valves.ENABLE_PROMPT_CACHING and 
-            len(system_message) >= self.valves.MIN_CACHE_TOKENS):
+        if use_caching and len(system_message) >= self.valves.MIN_CACHE_TOKENS:
             # Return as cacheable block
             return [{
                 "type": "text",
@@ -449,7 +439,9 @@ class Pipeline:
         model_id: str,
         messages: List[dict],
         system_message: Optional[str],
-        body: dict
+        body: dict,
+        use_thinking: bool,
+        use_caching: bool
     ) -> dict:
         """
         Constructs the API payload for Anthropic.
@@ -478,7 +470,7 @@ class Pipeline:
         }
         
         # Add system message (with optional caching)
-        system_content = self.build_system_message(system_message)
+        system_content = self.build_system_message(system_message, use_caching)
         if system_content:
             payload["system"] = system_content
         
@@ -494,10 +486,7 @@ class Pipeline:
             payload["stop_sequences"] = body["stop"]
         
         # Extended Thinking Configuration
-        if (self.valves.ENABLE_EXTENDED_THINKING and 
-            self.supports_extended_thinking(model_id) and
-            body.get("enable_thinking", True)):  # Default to enabled for supported models
-            
+        if use_thinking:
             thinking_budget = body.get("thinking_budget", self.valves.DEFAULT_THINKING_BUDGET)
             # Clamp to valid range
             thinking_budget = max(1024, min(thinking_budget, 128000))
@@ -515,7 +504,7 @@ class Pipeline:
         
         return payload
 
-    def stream_response(self, payload: dict) -> Generator:
+    def stream_response(self, payload: dict, headers: dict) -> Generator:
         """
         Streams response from Anthropic API.
         
@@ -529,12 +518,10 @@ class Pipeline:
         
         Extended thinking content is yielded with special formatting.
         """
-        self.headers["x-api-key"] = self.valves.ANTHROPIC_API_KEY
-        
         try:
             response = requests.post(
-                self.url,
-                headers=self.headers,
+                self.valves.ANTHROPIC_API_URL,
+                headers=headers,
                 json=payload,
                 stream=True,
                 timeout=300  # 5 minute timeout for long responses
@@ -554,10 +541,13 @@ class Pipeline:
                     event_type = data.get("type", "")
                     
                     if event_type == "message_start":
-                        # Could emit sovereignty warning here
-                        if self.valves.SHOW_SOVEREIGNTY_WARNING:
-                            # Optionally yield a warning prefix
-                            pass
+                        # Track input tokens from message_start
+                        if self.valves.ENABLE_TOKEN_TRACKING:
+                            message = data.get("message", {})
+                            usage = message.get("usage", {})
+                            self.session_usage["input_tokens"] += usage.get("input_tokens", 0)
+                            self.session_usage["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0)
+                            self.session_usage["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0)
                     
                     elif event_type == "content_block_start":
                         block = data.get("content_block", {})
@@ -595,21 +585,27 @@ class Pipeline:
                 except json.JSONDecodeError:
                     continue
         
+        except requests.exceptions.HTTPError as e:
+            error_body = ""
+            try:
+                error_body = e.response.text
+            except:
+                pass
+            yield f"\n\n**HTTP Error {e.response.status_code}:** {str(e)}\n{error_body}"
         except requests.RequestException as e:
             yield f"\n\n**Error communicating with Anthropic API:** {str(e)}"
 
-    def get_completion(self, payload: dict) -> str:
+    def get_completion(self, payload: dict, headers: dict) -> str:
         """
         Gets non-streaming completion from Anthropic API.
         Returns the complete response text.
         """
-        self.headers["x-api-key"] = self.valves.ANTHROPIC_API_KEY
         payload["stream"] = False
         
         try:
             response = requests.post(
-                self.url,
-                headers=self.headers,
+                self.valves.ANTHROPIC_API_URL,
+                headers=headers,
                 json=payload,
                 timeout=300
             )
@@ -637,6 +633,13 @@ class Pipeline:
             
             return "".join(result_parts)
         
+        except requests.exceptions.HTTPError as e:
+            error_body = ""
+            try:
+                error_body = e.response.text
+            except:
+                pass
+            return f"**HTTP Error {e.response.status_code}:** {str(e)}\n{error_body}"
         except requests.RequestException as e:
             return f"**Error communicating with Anthropic API:** {str(e)}"
 
@@ -673,24 +676,40 @@ class Pipeline:
             # Process messages to Anthropic format
             system_message, processed_messages = self.process_messages(messages)
             
+            # Determine which features to use
+            model_config = self.get_model_config(model_id)
+            
+            use_thinking = (
+                self.valves.ENABLE_EXTENDED_THINKING and 
+                model_config.get("supports_thinking", False) and
+                body.get("enable_thinking", True)  # Default to enabled for supported models
+            )
+            
+            use_caching = (
+                self.valves.ENABLE_PROMPT_CACHING and
+                model_config.get("supports_caching", True) and
+                system_message and
+                len(system_message) >= self.valves.MIN_CACHE_TOKENS
+            )
+            
+            # Build headers with appropriate beta features
+            headers = self._get_headers(use_thinking=use_thinking, use_caching=use_caching)
+            
             # Build API payload
             payload = self.build_payload(
                 model_id=model_id,
                 messages=processed_messages,
                 system_message=system_message,
-                body=body
+                body=body,
+                use_thinking=use_thinking,
+                use_caching=use_caching
             )
-            
-            # Track input tokens
-            if self.valves.ENABLE_TOKEN_TRACKING:
-                # Rough estimate - actual count comes from API response
-                pass
             
             # Return streaming or complete response
             if body.get("stream", False):
-                return self.stream_response(payload)
+                return self.stream_response(payload, headers)
             else:
-                return self.get_completion(payload)
+                return self.get_completion(payload, headers)
         
         except ValueError as e:
             return f"**Validation Error:** {str(e)}"
