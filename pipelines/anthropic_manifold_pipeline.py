@@ -1,9 +1,7 @@
 """
 title: Anthropic Manifold Pipeline (Enhanced)
 author: Continuum Unify
-version: 2.0.2
-requirements: sseclient-py, requests
-requirements: sseclient-py, requests
+version: 2.0.3
 description: Enhanced Claude models integration with extended thinking, prompt caching, and token tracking
 requirements: sseclient-py, requests
 
@@ -101,7 +99,7 @@ class Pipeline:
         Multiple beta features can be combined with comma separation.
         """
         headers = {
-            "anthropic-version": "2024-10-22",  # Updated for Claude 4.x features
+            "anthropic-version": "2023-06-01",  # Current stable API version
             "content-type": "application/json",
             "x-api-key": self.valves.ANTHROPIC_API_KEY,
         }
