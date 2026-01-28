@@ -2,7 +2,7 @@
 title: Anthropic Manifold Pipeline
 author: justinh-rahb, sriparashiva (corrected version)
 date: 2024-06-20
-version: 1.5
+version: 1.7
 license: MIT
 description: A pipeline for generating text and processing images using the Anthropic API.
 requirements: requests, sseclient-py
@@ -44,19 +44,61 @@ class Pipeline:
 
     def get_anthropic_models(self):
         return [
-            # Claude 3 models
-            {"id": "claude-3-haiku-20240307", "name": "claude-3-haiku"},
-            {"id": "claude-3-sonnet-20240229", "name": "claude-3-sonnet"},
-            {"id": "claude-3-opus-20240229", "name": "claude-3-opus"},
-            # Claude 3.5 models
-            {"id": "claude-3-5-haiku-20241022", "name": "claude-3.5-haiku"},
-            {"id": "claude-3-5-sonnet-20241022", "name": "claude-3.5-sonnet"},
-            # Claude 3.7 models
-            {"id": "claude-3-7-sonnet-20250219", "name": "claude-3.7-sonnet"},
-            # Claude 4 models (latest)
+            # ============================================
+            # Claude 4.5 Models (Latest - Recommended)
+            # ============================================
+            {"id": "claude-sonnet-4-5-20250929", "name": "claude-sonnet-4.5 (latest)"},
+            {"id": "claude-haiku-4-5-20250929", "name": "claude-haiku-4.5 (fastest)"},
+            {"id": "claude-opus-4-5-20250929", "name": "claude-opus-4.5 (premium)"},
+            
+            # ============================================
+            # Claude 4.1 Models
+            # ============================================
+            {"id": "claude-opus-4-1-20250929", "name": "claude-opus-4.1"},
+            
+            # ============================================
+            # Claude 4 Models
+            # ============================================
             {"id": "claude-sonnet-4-20250514", "name": "claude-sonnet-4"},
             {"id": "claude-opus-4-20250514", "name": "claude-opus-4"},
+            
+            # ============================================
+            # Claude 3.7 Models
+            # ============================================
+            {"id": "claude-3-7-sonnet-20250219", "name": "claude-3.7-sonnet"},
+            
+            # ============================================
+            # Claude 3.5 Models
+            # ============================================
+            {"id": "claude-3-5-sonnet-20241022", "name": "claude-3.5-sonnet"},
+            {"id": "claude-3-5-haiku-20241022", "name": "claude-3.5-haiku"},
+            
+            # ============================================
+            # Claude 3 Models (Legacy)
+            # ============================================
+            {"id": "claude-3-opus-20240229", "name": "claude-3-opus"},
+            {"id": "claude-3-sonnet-20240229", "name": "claude-3-sonnet"},
+            {"id": "claude-3-haiku-20240307", "name": "claude-3-haiku"},
         ]
+
+    def get_default_max_tokens(self, model_id: str) -> int:
+        """
+        Return appropriate max_tokens based on model capability.
+        """
+        if "4-5" in model_id or "4.5" in model_id:
+            return 16384
+        elif "4-1" in model_id or "4.1" in model_id:
+            return 16384
+        elif "claude-sonnet-4" in model_id:
+            return 16384
+        elif "claude-opus-4" in model_id:
+            return 16384
+        elif "claude-3-7" in model_id:
+            return 16384
+        elif "claude-3-5" in model_id:
+            return 8192
+        else:
+            return 4096
 
     async def on_startup(self):
         print(f"on_startup:{__name__}")
@@ -78,7 +120,6 @@ class Pipeline:
         Anthropic only supports base64-encoded images, not URLs.
         """
         if image_data["url"].startswith("data:image"):
-            # Already base64 encoded
             mime_type, base64_data = image_data["url"].split(",", 1)
             media_type = mime_type.split(":")[1].split(";")[0]
             return {
@@ -90,12 +131,10 @@ class Pipeline:
                 },
             }
         else:
-            # URL image - need to download and convert to base64
             try:
                 response = requests.get(image_data["url"], timeout=30)
                 response.raise_for_status()
                 
-                # Get media type from response headers or infer from URL
                 content_type = response.headers.get('content-type', '')
                 if 'jpeg' in content_type or 'jpg' in content_type:
                     media_type = 'image/jpeg'
@@ -106,7 +145,6 @@ class Pipeline:
                 elif 'webp' in content_type:
                     media_type = 'image/webp'
                 else:
-                    # Try to infer from URL
                     url_lower = image_data["url"].lower()
                     if '.png' in url_lower:
                         media_type = 'image/png'
@@ -115,7 +153,7 @@ class Pipeline:
                     elif '.webp' in url_lower:
                         media_type = 'image/webp'
                     else:
-                        media_type = 'image/jpeg'  # Default to JPEG
+                        media_type = 'image/jpeg'
                 
                 base64_data = base64.b64encode(response.content).decode('utf-8')
                 
@@ -140,6 +178,9 @@ class Pipeline:
 
             system_message, messages = pop_system_message(messages)
 
+            # Get model-appropriate max tokens
+            default_max_tokens = self.get_default_max_tokens(model_id)
+
             processed_messages = []
             image_count = 0
             total_image_size = 0
@@ -157,15 +198,13 @@ class Pipeline:
                             processed_image = self.process_image(item["image_url"])
                             processed_content.append(processed_image)
 
-                            # Calculate image size for base64 data
                             if processed_image["source"]["type"] == "base64":
-                                # Base64 string length * 3/4 gives approximate byte size
                                 image_size = len(processed_image["source"]["data"]) * 3 / 4
                             else:
                                 image_size = 0
 
                             total_image_size += image_size
-                            if total_image_size > 100 * 1024 * 1024:  # 100 MB limit
+                            if total_image_size > 100 * 1024 * 1024:
                                 raise ValueError("Total size of images exceeds 100 MB limit")
 
                             image_count += 1
@@ -175,17 +214,21 @@ class Pipeline:
                 processed_messages.append({"role": message["role"], "content": processed_content})
 
             # Prepare the payload
+            # IMPORTANT: Anthropic API doesn't allow both temperature and top_p
+            # We use temperature only and exclude top_p to avoid the 400 error
             payload = {
                 "model": model_id,
                 "messages": processed_messages,
-                "max_tokens": body.get("max_tokens", 4096),
-                "temperature": body.get("temperature", 0.8),
-                "top_k": body.get("top_k", 40),
-                "top_p": body.get("top_p", 0.9),
+                "max_tokens": body.get("max_tokens", default_max_tokens),
+                "temperature": body.get("temperature", 0.7),
                 "stop_sequences": body.get("stop", []),
                 **({"system": str(system_message)} if system_message else {}),
                 "stream": body.get("stream", False),
             }
+
+            # Optionally add top_k if provided (top_k is allowed with temperature)
+            if "top_k" in body and body["top_k"] is not None:
+                payload["top_k"] = body["top_k"]
 
             if body.get("stream", False):
                 return self.stream_response(payload)
@@ -201,7 +244,7 @@ class Pipeline:
                 headers=self.headers, 
                 json=payload, 
                 stream=True,
-                timeout=120
+                timeout=300
             )
 
             if response.status_code == 200:
@@ -243,7 +286,7 @@ class Pipeline:
                 self.url, 
                 headers=self.headers, 
                 json=payload,
-                timeout=120
+                timeout=300
             )
             
             if response.status_code == 200:
