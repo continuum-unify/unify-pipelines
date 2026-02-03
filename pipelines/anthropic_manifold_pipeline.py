@@ -1,7 +1,7 @@
 """
 title: Anthropic Manifold Pipeline (Enhanced)
 author: Continuum Unify
-version: 2.0.3
+version: 2.2.0
 description: Enhanced Claude models integration with extended thinking, prompt caching, and token tracking
 requirements: sseclient-py, requests
 
@@ -11,8 +11,11 @@ Features:
 - Prompt caching for 90% cost reduction on repeated system prompts
 - Token usage tracking for cost monitoring
 - Data sovereignty warnings for non-Australian processing
+- Retry logic with exponential backoff for transient API errors (overloaded, rate limits)
 
 Changelog:
+- v2.2.0: Added os.getenv() fallback for ANTHROPIC_API_KEY (K8s Secret support)
+- v2.1.0: Added retry logic for Anthropic overloaded/529 errors, graceful streaming error recovery
 - v2.0.1: Fixed beta headers for extended thinking and prompt caching, updated API version
 - v2.0.0: Added extended thinking, increased token limits, Claude 4.5 updates
 - v1.0.0: Initial pipeline with basic Claude integration
@@ -20,10 +23,20 @@ Changelog:
 
 import base64
 import json
+import logging
+import os
 import requests
 import sseclient
+import time
 from typing import Generator, List, Optional, Union
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
+
+# Anthropic error types that are safe to retry
+RETRYABLE_ERROR_TYPES = {"overloaded", "api_error", "rate_limit_error"}
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 529}
 
 
 class Pipeline:
@@ -36,8 +49,8 @@ class Pipeline:
         """Configuration exposed in Admin Panel → Settings → Pipelines"""
         
         ANTHROPIC_API_KEY: str = Field(
-            default="",
-            description="Anthropic API key (sk-ant-...)"
+            default=os.getenv("ANTHROPIC_API_KEY", ""),
+            description="Anthropic API key. Auto-populated from environment if available."
         )
         ANTHROPIC_API_URL: str = Field(
             default="https://api.anthropic.com/v1/messages",
@@ -75,6 +88,20 @@ class Pipeline:
             default=True,
             description="Show warning that data is processed outside Australia"
         )
+        
+        # Retry Configuration
+        MAX_RETRIES: int = Field(
+            default=3,
+            description="Maximum retry attempts for transient API errors (overloaded, rate limits)"
+        )
+        INITIAL_RETRY_DELAY: float = Field(
+            default=1.0,
+            description="Initial delay in seconds before first retry (doubles each attempt)"
+        )
+        MAX_RETRY_DELAY: float = Field(
+            default=30.0,
+            description="Maximum delay in seconds between retries"
+        )
 
     def __init__(self):
         self.type = "manifold"  # Exposes multiple models
@@ -90,6 +117,34 @@ class Pipeline:
             "cache_read_input_tokens": 0,
             "thinking_tokens": 0
         }
+
+    def _calculate_retry_delay(self, attempt: int, response: Optional[requests.Response] = None) -> float:
+        """
+        Calculate delay before next retry using exponential backoff.
+        
+        Respects Anthropic's retry-after header when present.
+        Falls back to exponential backoff: initial_delay * 2^attempt
+        """
+        # Check for retry-after header from Anthropic
+        if response is not None:
+            retry_after = response.headers.get("retry-after")
+            if retry_after:
+                try:
+                    return min(float(retry_after), self.valves.MAX_RETRY_DELAY)
+                except (ValueError, TypeError):
+                    pass
+        
+        # Exponential backoff
+        delay = self.valves.INITIAL_RETRY_DELAY * (2 ** attempt)
+        return min(delay, self.valves.MAX_RETRY_DELAY)
+
+    def _is_retryable_http_error(self, status_code: int) -> bool:
+        """Check if HTTP status code indicates a retryable error."""
+        return status_code in RETRYABLE_HTTP_CODES
+
+    def _is_retryable_stream_error(self, error_type: str) -> bool:
+        """Check if a streaming error event indicates a retryable error."""
+        return error_type in RETRYABLE_ERROR_TYPES
 
     def _get_headers(self, use_thinking: bool = False, use_caching: bool = False) -> dict:
         """
@@ -507,7 +562,7 @@ class Pipeline:
 
     def stream_response(self, payload: dict, headers: dict) -> Generator:
         """
-        Streams response from Anthropic API.
+        Streams response from Anthropic API with retry logic for transient errors.
         
         Handles multiple event types:
         - message_start: Initial message metadata
@@ -517,132 +572,279 @@ class Pipeline:
         - message_delta: Usage statistics
         - message_stop: End of message
         
-        Extended thinking content is yielded with special formatting.
+        Retry behaviour:
+        - HTTP 429/500/502/503/529: Retry with exponential backoff
+        - Stream error event (overloaded/api_error/rate_limit): Retry with backoff
+        - Non-retryable errors: Yield user-friendly error message
         """
-        try:
-            response = requests.post(
-                self.valves.ANTHROPIC_API_URL,
-                headers=headers,
-                json=payload,
-                stream=True,
-                timeout=300  # 5 minute timeout for long responses
-            )
-            response.raise_for_status()
-            
-            client = sseclient.SSEClient(response)
-            current_block_type = None
-            in_thinking = False
-            
-            for event in client.events():
-                if event.data == "[DONE]":
-                    break
-                
-                try:
-                    data = json.loads(event.data)
-                    event_type = data.get("type", "")
-                    
-                    if event_type == "message_start":
-                        # Track input tokens from message_start
-                        if self.valves.ENABLE_TOKEN_TRACKING:
-                            message = data.get("message", {})
-                            usage = message.get("usage", {})
-                            self.session_usage["input_tokens"] += usage.get("input_tokens", 0)
-                            self.session_usage["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0)
-                            self.session_usage["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0)
-                    
-                    elif event_type == "content_block_start":
-                        block = data.get("content_block", {})
-                        current_block_type = block.get("type", "text")
-                        
-                        if current_block_type == "thinking":
-                            in_thinking = True
-                            yield "\n<thinking>\n"
-                    
-                    elif event_type == "content_block_delta":
-                        delta = data.get("delta", {})
-                        delta_type = delta.get("type", "")
-                        
-                        if delta_type == "text_delta":
-                            yield delta.get("text", "")
-                        elif delta_type == "thinking_delta":
-                            yield delta.get("thinking", "")
-                    
-                    elif event_type == "content_block_stop":
-                        if in_thinking:
-                            yield "\n</thinking>\n\n"
-                            in_thinking = False
-                        current_block_type = None
-                    
-                    elif event_type == "message_delta":
-                        # Track usage statistics
-                        if self.valves.ENABLE_TOKEN_TRACKING:
-                            usage = data.get("usage", {})
-                            self.session_usage["output_tokens"] += usage.get("output_tokens", 0)
-                    
-                    elif event_type == "error":
-                        error = data.get("error", {})
-                        raise Exception(f"Anthropic API error: {error.get('message', 'Unknown error')}")
-                
-                except json.JSONDecodeError:
-                    continue
+        last_error = None
         
-        except requests.exceptions.HTTPError as e:
-            error_body = ""
+        for attempt in range(self.valves.MAX_RETRIES + 1):
+            if attempt > 0:
+                delay = self._calculate_retry_delay(attempt - 1)
+                logger.warning(
+                    f"Anthropic API retry {attempt}/{self.valves.MAX_RETRIES} "
+                    f"after {delay:.1f}s delay (previous error: {last_error})"
+                )
+                time.sleep(delay)
+            
             try:
-                error_body = e.response.text
-            except:
-                pass
-            yield f"\n\n**HTTP Error {e.response.status_code}:** {str(e)}\n{error_body}"
-        except requests.RequestException as e:
-            yield f"\n\n**Error communicating with Anthropic API:** {str(e)}"
+                response = requests.post(
+                    self.valves.ANTHROPIC_API_URL,
+                    headers=headers,
+                    json=payload,
+                    stream=True,
+                    timeout=300  # 5 minute timeout for long responses
+                )
+                
+                # Handle retryable HTTP errors before reading the stream
+                if response.status_code != 200:
+                    if self._is_retryable_http_error(response.status_code) and attempt < self.valves.MAX_RETRIES:
+                        error_body = ""
+                        try:
+                            error_body = response.text[:500]
+                        except Exception:
+                            pass
+                        last_error = f"HTTP {response.status_code}: {error_body}"
+                        logger.warning(f"Retryable HTTP error from Anthropic: {last_error}")
+                        continue  # Retry
+                    else:
+                        # Non-retryable HTTP error or retries exhausted
+                        error_body = ""
+                        try:
+                            error_body = response.text
+                        except Exception:
+                            pass
+                        yield f"\n\n**Anthropic API Error (HTTP {response.status_code}):** {error_body}"
+                        return
+                
+                # Stream is connected successfully — process events
+                client = sseclient.SSEClient(response)
+                current_block_type = None
+                in_thinking = False
+                has_yielded_content = False
+                stream_error_type = None
+                
+                for event in client.events():
+                    if event.data == "[DONE]":
+                        break
+                    
+                    try:
+                        data = json.loads(event.data)
+                        event_type = data.get("type", "")
+                        
+                        if event_type == "message_start":
+                            # Track input tokens from message_start
+                            if self.valves.ENABLE_TOKEN_TRACKING:
+                                message = data.get("message", {})
+                                usage = message.get("usage", {})
+                                self.session_usage["input_tokens"] += usage.get("input_tokens", 0)
+                                self.session_usage["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0)
+                                self.session_usage["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0)
+                        
+                        elif event_type == "content_block_start":
+                            block = data.get("content_block", {})
+                            current_block_type = block.get("type", "text")
+                            
+                            if current_block_type == "thinking":
+                                in_thinking = True
+                                yield "\n<thinking>\n"
+                                has_yielded_content = True
+                        
+                        elif event_type == "content_block_delta":
+                            delta = data.get("delta", {})
+                            delta_type = delta.get("type", "")
+                            
+                            if delta_type == "text_delta":
+                                text = delta.get("text", "")
+                                if text:
+                                    yield text
+                                    has_yielded_content = True
+                            elif delta_type == "thinking_delta":
+                                thinking = delta.get("thinking", "")
+                                if thinking:
+                                    yield thinking
+                                    has_yielded_content = True
+                        
+                        elif event_type == "content_block_stop":
+                            if in_thinking:
+                                yield "\n</thinking>\n\n"
+                                in_thinking = False
+                            current_block_type = None
+                        
+                        elif event_type == "message_delta":
+                            # Track usage statistics
+                            if self.valves.ENABLE_TOKEN_TRACKING:
+                                usage = data.get("usage", {})
+                                self.session_usage["output_tokens"] += usage.get("output_tokens", 0)
+                        
+                        elif event_type == "error":
+                            error = data.get("error", {})
+                            error_type = error.get("type", "unknown")
+                            error_message = error.get("message", "Unknown error")
+                            
+                            # Check if this is a retryable error
+                            if self._is_retryable_stream_error(error_type) and attempt < self.valves.MAX_RETRIES:
+                                last_error = f"{error_type}: {error_message}"
+                                stream_error_type = error_type
+                                logger.warning(
+                                    f"Retryable stream error from Anthropic: {last_error} "
+                                    f"(attempt {attempt + 1}/{self.valves.MAX_RETRIES + 1})"
+                                )
+                                break  # Break out of event loop to retry
+                            else:
+                                # Non-retryable error or retries exhausted
+                                if has_yielded_content:
+                                    yield f"\n\n---\n⚠️ **Response interrupted** — Anthropic API returned: {error_message}\n"
+                                else:
+                                    yield f"**Anthropic API Error ({error_type}):** {error_message}"
+                                return
+                    
+                    except json.JSONDecodeError:
+                        continue
+                
+                # If we broke out of the event loop due to a retryable stream error, continue to next attempt
+                if stream_error_type and attempt < self.valves.MAX_RETRIES:
+                    stream_error_type = None
+                    continue
+                
+                # Stream completed successfully (or with non-retryable error handled above)
+                return
+            
+            except requests.exceptions.ConnectionError as e:
+                last_error = f"Connection error: {str(e)}"
+                if attempt < self.valves.MAX_RETRIES:
+                    logger.warning(f"Retryable connection error: {last_error}")
+                    continue
+                else:
+                    yield f"\n\n**Connection Error:** Unable to reach Anthropic API after {self.valves.MAX_RETRIES + 1} attempts. {str(e)}"
+                    return
+            
+            except requests.exceptions.Timeout as e:
+                last_error = f"Timeout: {str(e)}"
+                if attempt < self.valves.MAX_RETRIES:
+                    logger.warning(f"Retryable timeout: {last_error}")
+                    continue
+                else:
+                    yield f"\n\n**Timeout Error:** Anthropic API did not respond within the timeout period after {self.valves.MAX_RETRIES + 1} attempts."
+                    return
+            
+            except requests.RequestException as e:
+                # Other request errors — generally not retryable
+                yield f"\n\n**Error communicating with Anthropic API:** {str(e)}"
+                return
+        
+        # All retries exhausted
+        yield (
+            f"\n\n**Anthropic API temporarily unavailable** — "
+            f"The API returned '{last_error}' after {self.valves.MAX_RETRIES + 1} attempts. "
+            f"This is usually a temporary issue. Please try again in a moment."
+        )
 
     def get_completion(self, payload: dict, headers: dict) -> str:
         """
-        Gets non-streaming completion from Anthropic API.
+        Gets non-streaming completion from Anthropic API with retry logic.
         Returns the complete response text.
         """
         payload["stream"] = False
+        last_error = None
         
-        try:
-            response = requests.post(
-                self.valves.ANTHROPIC_API_URL,
-                headers=headers,
-                json=payload,
-                timeout=300
-            )
-            response.raise_for_status()
+        for attempt in range(self.valves.MAX_RETRIES + 1):
+            if attempt > 0:
+                delay = self._calculate_retry_delay(attempt - 1)
+                logger.warning(
+                    f"Anthropic API retry {attempt}/{self.valves.MAX_RETRIES} "
+                    f"after {delay:.1f}s delay (previous error: {last_error})"
+                )
+                time.sleep(delay)
             
-            data = response.json()
-            
-            # Track usage
-            if self.valves.ENABLE_TOKEN_TRACKING:
-                usage = data.get("usage", {})
-                self.session_usage["input_tokens"] += usage.get("input_tokens", 0)
-                self.session_usage["output_tokens"] += usage.get("output_tokens", 0)
-                self.session_usage["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0)
-                self.session_usage["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0)
-            
-            # Extract response text
-            content = data.get("content", [])
-            result_parts = []
-            
-            for block in content:
-                if block.get("type") == "thinking":
-                    result_parts.append(f"<thinking>\n{block.get('thinking', '')}\n</thinking>\n\n")
-                elif block.get("type") == "text":
-                    result_parts.append(block.get("text", ""))
-            
-            return "".join(result_parts)
-        
-        except requests.exceptions.HTTPError as e:
-            error_body = ""
             try:
-                error_body = e.response.text
-            except:
-                pass
-            return f"**HTTP Error {e.response.status_code}:** {str(e)}\n{error_body}"
-        except requests.RequestException as e:
-            return f"**Error communicating with Anthropic API:** {str(e)}"
+                response = requests.post(
+                    self.valves.ANTHROPIC_API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=300
+                )
+                
+                # Handle retryable HTTP errors
+                if response.status_code != 200:
+                    if self._is_retryable_http_error(response.status_code) and attempt < self.valves.MAX_RETRIES:
+                        error_body = ""
+                        try:
+                            error_body = response.text[:500]
+                        except Exception:
+                            pass
+                        last_error = f"HTTP {response.status_code}: {error_body}"
+                        logger.warning(f"Retryable HTTP error from Anthropic: {last_error}")
+                        continue
+                    else:
+                        error_body = ""
+                        try:
+                            error_body = response.text
+                        except Exception:
+                            pass
+                        return f"**Anthropic API Error (HTTP {response.status_code}):** {error_body}"
+                
+                data = response.json()
+                
+                # Check for error in response body
+                if data.get("type") == "error":
+                    error = data.get("error", {})
+                    error_type = error.get("type", "unknown")
+                    error_message = error.get("message", "Unknown error")
+                    
+                    if self._is_retryable_stream_error(error_type) and attempt < self.valves.MAX_RETRIES:
+                        last_error = f"{error_type}: {error_message}"
+                        logger.warning(f"Retryable API error: {last_error}")
+                        continue
+                    else:
+                        return f"**Anthropic API Error ({error_type}):** {error_message}"
+                
+                # Track usage
+                if self.valves.ENABLE_TOKEN_TRACKING:
+                    usage = data.get("usage", {})
+                    self.session_usage["input_tokens"] += usage.get("input_tokens", 0)
+                    self.session_usage["output_tokens"] += usage.get("output_tokens", 0)
+                    self.session_usage["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0)
+                    self.session_usage["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0)
+                
+                # Extract response text
+                content = data.get("content", [])
+                result_parts = []
+                
+                for block in content:
+                    if block.get("type") == "thinking":
+                        result_parts.append(f"<thinking>\n{block.get('thinking', '')}\n</thinking>\n\n")
+                    elif block.get("type") == "text":
+                        result_parts.append(block.get("text", ""))
+                
+                return "".join(result_parts)
+            
+            except requests.exceptions.ConnectionError as e:
+                last_error = f"Connection error: {str(e)}"
+                if attempt < self.valves.MAX_RETRIES:
+                    logger.warning(f"Retryable connection error: {last_error}")
+                    continue
+                else:
+                    return f"**Connection Error:** Unable to reach Anthropic API after {self.valves.MAX_RETRIES + 1} attempts."
+            
+            except requests.exceptions.Timeout as e:
+                last_error = f"Timeout: {str(e)}"
+                if attempt < self.valves.MAX_RETRIES:
+                    logger.warning(f"Retryable timeout: {last_error}")
+                    continue
+                else:
+                    return f"**Timeout Error:** Anthropic API did not respond after {self.valves.MAX_RETRIES + 1} attempts."
+            
+            except requests.RequestException as e:
+                return f"**Error communicating with Anthropic API:** {str(e)}"
+        
+        # All retries exhausted
+        return (
+            f"**Anthropic API temporarily unavailable** — "
+            f"The API returned '{last_error}' after {self.valves.MAX_RETRIES + 1} attempts. "
+            f"Please try again in a moment."
+        )
 
     def pipe(
         self,
